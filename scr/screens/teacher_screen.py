@@ -1,5 +1,5 @@
 import streamlit as st
-
+import sc
 
 def teacher_screen():
     st.title("Teacher Portal")
