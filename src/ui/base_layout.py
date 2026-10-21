@@ -8,11 +8,11 @@ def style_background_home():
         <style>
 
                 .stApp {
-                    background: #5865F2 !important;
+                    background:#0000ff!important;
                 }
 
                 .stApp div[data-testid="stColumn"]{
-                    background-color:#E0E3FF !important;
+                    background-color:#FFFFFF!important;
                     padding:2.5rem !important;
                     border-radius: 5rem !important;
                     }
@@ -48,7 +48,6 @@ def style_base_layout():
 
                 
          /* Hide Top Bar of streamlit */
-                
             #MainMenu, footer, header {
                 visibility: hidden;
             }
@@ -70,7 +69,6 @@ def style_base_layout():
                 font-size: 2rem !important;
                 line-height:0.9 !important;
                 margin-bottom:0rem !important;
-                color: #000000 !important;
             }
                 
             h3, h4, p {
