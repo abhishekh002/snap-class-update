@@ -1,13 +1,24 @@
 import io
 
-import librosa
 import numpy as np
 import streamlit as st
-from resemblyzer import VoiceEncoder, preprocess_wav
+
+
+def _load_voice_dependencies():
+    try:
+        import librosa
+        from resemblyzer import VoiceEncoder, preprocess_wav
+    except ModuleNotFoundError as error:
+        raise RuntimeError(
+            "Voice features require librosa and resemblyzer. "
+            "Install them with `python -m pip install librosa resemblyzer`."
+        ) from error
+    return librosa, VoiceEncoder, preprocess_wav
 
 
 @st.cache_resource
 def load_voice_encoder():
+    _, VoiceEncoder, _ = _load_voice_dependencies()
     return VoiceEncoder()
 
 
@@ -15,14 +26,19 @@ def get_voice_embedding(audio_bytes):
     if not audio_bytes:
         raise ValueError("Audio data must not be empty.")
 
-    audio, sample_rate = librosa.load(
-        io.BytesIO(audio_bytes),
-        sr=16000,
-        mono=True,
-    )
-    wav = preprocess_wav(audio, source_sr=sample_rate)
-    embedding = load_voice_encoder().embed_utterance(wav)
-    return np.asarray(embedding, dtype=np.float32).tolist()
+    try:
+        librosa, _, preprocess_wav = _load_voice_dependencies()
+        audio, sample_rate = librosa.load(
+            io.BytesIO(audio_bytes),
+            sr=16000,
+            mono=True,
+        )
+        wav = preprocess_wav(audio, source_sr=sample_rate)
+        embedding = load_voice_encoder().embed_utterance(wav)
+        return np.asarray(embedding, dtype=np.float32).tolist()
+    except RuntimeError as error:
+        st.error(str(error))
+        return None
 
 
 def identify_speaker(new_embedding, candidates_dict, threshold=0.65):
@@ -62,6 +78,7 @@ def process_bulk_audio(audio_bytes, candidates_dict, threshold=0.65):
         if not audio_bytes:
             raise ValueError("Audio data must not be empty.")
 
+        librosa, _, preprocess_wav = _load_voice_dependencies()
         audio, sample_rate = librosa.load(
             io.BytesIO(audio_bytes),
             sr=16000,
