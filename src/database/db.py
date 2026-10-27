@@ -49,3 +49,13 @@ def create_student(new_name, face_embedding=None, voice_embedding=None):
     }
     response = supabase.table("students").insert(data).execute()
     return response.data
+
+def create_subject(subject_code: str, name: str, section: str, teacher_id: int):
+    data = {
+        "Subject_code": subject_code,
+        "name": name,
+        "section": section,
+        "teacher_id": teacher_id,
+    }
+    response = supabase.table("subject").insert(data).execute()
+    return response.data
