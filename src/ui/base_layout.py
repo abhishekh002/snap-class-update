@@ -1,25 +1,87 @@
 import streamlit as st
-
+import streamlit.components.v1 as components
 
 
 def style_background_home():
-
     st.markdown("""
         <style>
+            .stApp,
+            [data-testid="stAppViewContainer"],
+            [data-testid="stHeader"] {
+                background: transparent !important;
+            }
 
-                .stApp {
-                    background:#0000ff!important;
-                }
+            .stApp div[data-testid="stColumn"] {
+                background-color: #FFFFFF !important;
+                padding: 2.5rem !important;
+                border-radius: 5rem !important;
+            }
 
-                .stApp div[data-testid="stColumn"]{
-                    background-color:#FFFFFF!important;
-                    padding:2.5rem !important;
-                    border-radius: 5rem !important;
-                    }
-        </style>  
+            iframe[height="0"] { display: none; }
+        </style>
+    """, unsafe_allow_html=True)
 
-                """
-            ,unsafe_allow_html=True)
+    components.html("""
+    <script>
+    function init() {
+      if (document.getElementById('bg-canvas')) return;
+
+      const canvas = document.createElement('canvas');
+      canvas.id = 'bg-canvas';
+      canvas.style.cssText =
+        'position:fixed;inset:0;z-index:-1;background:#22DAFF;pointer-events:none;';
+      document.body.appendChild(canvas);
+
+      const ctx = canvas.getContext('2d');
+      const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
+      resize(); addEventListener('resize', resize);
+
+      const dots = Array.from({ length: 80 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.6,
+        vy: (Math.random() - 0.5) * 0.6,
+      }));
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < dots.length; i++) {
+          const d = dots[i];
+          d.x += d.vx; d.y += d.vy;
+          if (d.x < 0 || d.x > canvas.width) d.vx *= -1;
+          if (d.y < 0 || d.y > canvas.height) d.vy *= -1;
+
+          ctx.beginPath();
+          ctx.arc(d.x, d.y, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.fill();
+
+          for (let j = i + 1; j < dots.length; j++) {
+            const e = dots[j];
+            const dist = Math.hypot(d.x - e.x, d.y - e.y);
+            if (dist < 110) {
+              ctx.strokeStyle = 'rgba(255,255,255,' + (1 - dist / 110) * 0.5 + ')';
+              ctx.beginPath();
+              ctx.moveTo(d.x, d.y);
+              ctx.lineTo(e.x, e.y);
+              ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    }
+
+    const parentDoc = window.parent.document;
+    if (!parentDoc.getElementById('bg-script')) {
+      const s = parentDoc.createElement('script');
+      s.id = 'bg-script';
+      s.textContent = '(' + init.toString() + ')()';
+      parentDoc.body.appendChild(s);
+    }
+    </script>
+    """, height=0)
     
 
 def style_background_dashboard():
@@ -28,10 +90,25 @@ def style_background_dashboard():
         <style>
 
                 .stApp {
-                    background: #E0E3FF !important;
+                    background-color: #B8B8FF !important;
+                    background-image:
+                        radial-gradient(circle at 30% 70%, rgba(255,255,255,.5) 0 12px, transparent 13px),
+                        radial-gradient(circle at 70% 40%, rgba(255,255,255,.35) 0 20px, transparent 21px),
+                        radial-gradient(circle at 50% 20%, rgba(255,255,255,.45) 0 8px, transparent 9px) !important;
+                    background-size: 200px 200px, 300px 300px, 150px 150px !important;
+                    animation: rise 10s linear infinite !important;
                 }
 
-        </style>  
+                [data-testid="stHeader"] {
+                    background: transparent !important;
+                }
+
+                @keyframes rise {
+                    from { background-position: 0 0, 0 0, 0 0; }
+                    to   { background-position: 0 -200px, 0 -300px, 0 -150px; }
+                }
+
+        </style>
 
                 """
             ,unsafe_allow_html=True)

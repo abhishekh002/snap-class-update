@@ -2,9 +2,11 @@ import dlib
 import face_recognition_models
 import numpy as np
 import streamlit as st
-from sklearn.svm import SVC
 
 from src.database.db import get_all_students
+
+FACE_MATCH_THRESHOLD = 0.45
+FACE_MATCH_MARGIN = 0.05
 
 
 @st.cache_resource
@@ -58,16 +60,7 @@ def get_trained_model():
     if not embeddings:
         return None
 
-    classifier = None
-    if len(set(student_ids)) > 1:
-        classifier = SVC(
-            kernel="linear",
-            class_weight="balanced",
-        )
-        classifier.fit(embeddings, student_ids)
-
     return {
-        "clf": classifier,
         "x": embeddings,
         "y": student_ids,
     }
@@ -88,26 +81,30 @@ def predict_attendance(class_image_np):
     embeddings = model_data["x"]
     student_ids = model_data["y"]
     all_students = list(dict.fromkeys(student_ids))
-    classifier = model_data["clf"]
     detected_students = {}
 
     for encoding in encodings:
-        if classifier is None:
-            predicted_id = all_students[0]
-        else:
-            predicted_id = classifier.predict([encoding])[0]
+        distances_by_student = {}
+        for embedding, student_id in zip(embeddings, student_ids):
+            distance = np.linalg.norm(embedding - encoding)
+            distances_by_student[student_id] = min(
+                distance,
+                distances_by_student.get(student_id, float("inf")),
+            )
 
-        matching_embeddings = [
-            embedding
-            for embedding, student_id in zip(embeddings, student_ids)
-            if student_id == predicted_id
-        ]
-        best_match_score = min(
-            np.linalg.norm(embedding - encoding)
-            for embedding in matching_embeddings
+        closest_matches = sorted(
+            distances_by_student.items(),
+            key=lambda match: match[1],
         )
+        if not closest_matches:
+            continue
 
-        if best_match_score <= 0.6:
-            detected_students[predicted_id] = True
+        best_student_id, best_distance = closest_matches[0]
+        is_ambiguous = (
+            len(closest_matches) > 1
+            and closest_matches[1][1] - best_distance <= FACE_MATCH_MARGIN
+        )
+        if best_distance <= FACE_MATCH_THRESHOLD and not is_ambiguous:
+            detected_students[best_student_id] = True
 
     return detected_students, all_students, len(encodings)

@@ -4,8 +4,8 @@ from src.database.db import create_subject
 @st.dialog('Create New Subject')
 def create_subject_dialog(teacher_id):
     st.write('Enter the details of new subject')
-    sub_id = st.text_input('Subject Code',placeholder='Anlog')
-    sub_name = st.text_input('Subject_code',placeholder='Introduction to Anlog electronic')
+    sub_id = st.text_input('Subject Code',placeholder='#702EA')
+    sub_name = st.text_input('Subject Name',placeholder='DATA SCIENCE & ARTIFICIAL INTELLIGENCE')
     sub_section = st.text_input('Section',placeholder='B')
 
 

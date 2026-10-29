@@ -1,14 +1,19 @@
+import base64
+from pathlib import Path
+
 import streamlit as st
+
+
+LOGO_PATH = Path(__file__).resolve().parents[1] / "assets" / "snapclass-logo-animated.svg"
+LOGO_DATA_URI = f"data:image/svg+xml;base64,{base64.b64encode(LOGO_PATH.read_bytes()).decode('ascii')}"
 
 
 def header_home():
 
-    logo_url = "https://i.ibb.co/YTYGn5qV/logo.png"
-    
+    logo_url = LOGO_DATA_URI
     st.markdown(f"""
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:30px; margin-top:30px">
-            <img src='{logo_url}' style='height:100px;' />
-            <h1 style='text-align:center; color:#E0E3FF'>SNAP<br/>CLASS</h1>
+        <div style="display:flex; align-items:center; justify-content:center; margin-bottom:30px; margin-top:30px">
+            <img src='{logo_url}' alt='Snap Class logo' style='width:min(460px, 95vw); height:auto;' />
         </div>   
                 
                 """, unsafe_allow_html=True)
@@ -16,12 +21,10 @@ def header_home():
 
 def header_dashboard():
 
-    logo_url = "https://i.ibb.co/YTYGn5qV/logo.png"
-    
+    logo_url = LOGO_DATA_URI
     st.markdown(f"""
-        <div style="display:flex; align-items:center; justify-content:center; gap:10px">
-            <img src='{logo_url}' style='height:85px;' />
-            <h2 style='text-align:left; color:#5865F2'>SNAP<br/>CLASS</h2>
+        <div style="display:flex; align-items:center; justify-content:center">
+            <img src='{logo_url}' alt='Snap Class logo' style='width:min(280px, 90vw); height:auto;' />
         </div>   
                 
                 """, unsafe_allow_html=True)

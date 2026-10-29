@@ -4,7 +4,14 @@ from PIL import Image
 
 from src.components.footer import footer_dashboard
 from src.components.header import header_dashboard
-from src.database.db import create_student, get_all_students
+from src.database.db import (
+    create_student,
+    enroll_student_to_subject,
+    get_all_students,
+    get_student_attendance,
+    get_students_subjects,
+    unenroll_student_to_subject,
+)
 from src.pipelines.face_pipeline import (
     get_face_embeddings,
     predict_attendance,
@@ -13,11 +20,89 @@ from src.pipelines.face_pipeline import (
 from src.pipelines.voice_pipeline import get_voice_embedding
 from src.ui.base_layout import style_background_dashboard, style_base_layout
 
+from src.components.dialog_enroll import enroll_dialog
+from src.components.subject_card import Subject_card
 
 def student_dashboard():
-    st.header("DASHBOARD HERE")
+    student_data = st.session_state.get("student_data")
+    if student_data is None:
+        st.session_state["is_logged_in"] = False
+        st.session_state["user_role"] = None
+        st.rerun()
+        return
+    student_id = student_data["student_id"]
 
+    c1, c2 = st.columns(2, vertical_alignment="center", gap="large")
+    with c1:
+        header_dashboard()
+    with c2:
+        st.subheader(f"Good to see you, {student_data['name']}!")
+        if st.button("Logout", type="secondary", key="loginbackbtn"):
+            st.session_state["is_logged_in"] = False
+            st.session_state["user_role"] = None
+            st.session_state.pop("student_data", None)
+            st.rerun()
 
+    st.space()
+    enroll_col, _ = st.columns(2)
+    with enroll_col:
+        st.subheader("Your enrolled subjects")
+        if st.button("Enroll in a subject", type="primary", width="stretch"):
+            enroll_dialog()
+    st.divider()
+    with st.spinner("Loading your enrolled subjects..."):
+        subjects = get_students_subjects(student_id)
+        logs = get_student_attendance(student_id)
+    stats_map = {}
+    for log in logs:
+        subject_id = log.get("subject_id", log.get("subjects_id"))
+        if subject_id is None:
+            continue
+
+        subject_stats = stats_map.setdefault(
+            str(subject_id), {"total": 0, "attended": 0}
+        )
+        subject_stats["total"] += 1
+        if log.get("is_present"):
+            subject_stats["attended"] += 1
+
+    if not subjects:
+        st.info("You are not enrolled in any subjects yet.")
+
+    cols = st.columns(2)
+    for i, subject_node in enumerate(subjects):
+        subject = subject_node.get("subjects")
+        if not subject:
+            continue
+
+        subject_id = subject["subject_id"]
+        stats = stats_map.get(str(subject_id), {"total": 0, "attended": 0})
+
+        def unenroll_button(current_subject_id=subject_id, subject_name=subject["name"]):
+            if st.button(
+                "Unenroll from this subject",
+                type="tertiary",
+                width="stretch",
+                icon=":material/person_remove:",
+                key=f"unenroll_{current_subject_id}",
+            ):
+                unenroll_student_to_subject(student_id, current_subject_id)
+                st.toast(f"Unenrolled from {subject_name} successfully.")
+                st.rerun()
+
+        with cols[i % 2]:
+            Subject_card(
+                name=subject["name"],
+                code=subject["subject_code"],
+                section=subject["section"],
+                stats=[
+                    ("📅", "Total", stats["total"]),
+                    ("✅", "Attended", stats["attended"]),
+                ],
+                footer_callback=unenroll_button,
+            )
+
+    footer_dashboard()
 def student_screen():
     style_background_dashboard()
     style_base_layout()
@@ -34,7 +119,6 @@ def student_screen():
             "GO BACK TO HOME",
             type="secondary",
             key="loginbackbtn",
-            shortcut="Ctrl+Backspace",
         ):
             st.session_state["login_type"] = None
             st.rerun()
