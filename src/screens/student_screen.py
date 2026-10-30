@@ -1,7 +1,7 @@
 import numpy as np
 import streamlit as st
 from PIL import Image
-from postgrest.exceptions import APIError
+from supabase import PostgrestAPIError as APIError
 
 from src.components.footer import footer_dashboard
 from src.components.header import header_dashboard

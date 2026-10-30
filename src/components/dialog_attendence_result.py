@@ -1,5 +1,5 @@
 import streamlit as st
-from postgrest.exceptions import APIError
+from supabase import PostgrestAPIError as APIError
 
 from src.database.db import create_attendance
 

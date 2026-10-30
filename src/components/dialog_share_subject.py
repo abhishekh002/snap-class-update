@@ -7,7 +7,11 @@ import streamlit as st
 
 
 def _get_app_base_url():
-    configured_url = os.environ.get("SNAPCLASS_PUBLIC_URL")
+    configured_url = (
+        os.environ.get("AI_ATTENDANCE_PUBLIC_URL")
+        or st.secrets.get("public_app_url")
+        or os.environ.get("SNAPCLASS_PUBLIC_URL")
+    )
     app_url = configured_url or st.context.url
     if not app_url:
         return None
@@ -25,8 +29,8 @@ def share_subject_dialog(subject_name, subject_code):
     app_base_url = _get_app_base_url()
     if app_base_url is None:
         st.error(
-            "Could not determine the app URL. Set SNAPCLASS_PUBLIC_URL or open the app "
-            "through its public URL."
+            "Could not determine the app URL. Set AI_ATTENDANCE_PUBLIC_URL or "
+            "public_app_url, or open the app through its public URL."
         )
         return
 

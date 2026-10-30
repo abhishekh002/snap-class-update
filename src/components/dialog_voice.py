@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pandas as pd
 import streamlit as st
-from postgrest.exceptions import APIError
+from supabase import PostgrestAPIError as APIError
 
 from src.database.config import supabase
 from src.database.db import create_attendance
