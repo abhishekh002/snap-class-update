@@ -127,47 +127,45 @@ def _build_reset_url(token):
 
 
 def _send_reset_email(recipient, reset_url):
-    api_key = _setting("resend_api_key")
-    sender = _setting("resend_from_email")
+    api_key = _setting("sendgrid_api_key")
+    sender = _setting("sendgrid_from_email")
+    email_text = (
+        "We received a request to reset your AI Attendance teacher password.\n\n"
+        f"Use this link within one hour:\n{reset_url}\n\n"
+        "If you did not request this, you can ignore this email."
+    )
     payload = json.dumps(
         {
-            "from": sender,
-            "to": [recipient],
+            "personalizations": [{"to": [{"email": recipient}]}],
+            "from": {"email": sender},
             "subject": "Reset your AI Attendance teacher password",
-            "text": (
-                "We received a request to reset your AI Attendance teacher password.\n\n"
-                f"Use this link within one hour:\n{reset_url}\n\n"
-                "If you did not request this, you can ignore this email."
-            ),
+            "content": [{"type": "text/plain", "value": email_text}],
         }
     ).encode("utf-8")
     request = Request(
-        "https://api.resend.com/emails",
+        "https://api.sendgrid.com/v3/mail/send",
         data=payload,
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "AI-Attendance/1.0",
         },
         method="POST",
     )
 
     try:
         with urlopen(request, timeout=20) as response:
-            response_body = response.read()
+            if response.status != 202:
+                raise RuntimeError(
+                    f"SendGrid returned unexpected status {response.status}."
+                )
     except HTTPError as error:
         error_body = error.read().decode("utf-8", errors="replace")
         raise RuntimeError(
-            f"Resend rejected the reset email (HTTP {error.code}): {error_body}"
+            f"SendGrid rejected the reset email (HTTP {error.code}): {error_body}"
         ) from error
     except URLError as error:
-        raise RuntimeError(f"Could not connect to Resend: {error.reason}") from error
-
-    try:
-        result = json.loads(response_body)
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise RuntimeError("Resend returned an invalid response.") from error
-    if not result.get("id"):
-        raise RuntimeError("Resend did not confirm that it accepted the reset email.")
+        raise RuntimeError(f"Could not connect to SendGrid: {error.reason}") from error
 
 
 def request_password_reset(email):
