@@ -322,13 +322,10 @@ def teacher_tab_take_attendance():
                     st.warning("No valid enrolled student records were found.")
                     return
 
-            with st.expander("Face analysis by photo"):
-                for analysis in photo_analysis:
-                    st.write(analysis)
-
             attendance_result_dialog(
                 pd.DataFrame(results),
                 attendance_to_log,
+                photo_analysis=photo_analysis,
             )
     with c3:
         if st.button(

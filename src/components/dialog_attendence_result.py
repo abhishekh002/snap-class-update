@@ -5,8 +5,12 @@ from src.database.db import create_attendance
 
 
 @st.dialog("Attendance Reports")
-def attendance_result_dialog(df, logs):
+def attendance_result_dialog(df, logs, photo_analysis=None):
     st.write("Please review attendance before confirming.")
+    if photo_analysis:
+        with st.expander("Face analysis by photo"):
+            for analysis in photo_analysis:
+                st.write(analysis)
     st.dataframe(df, hide_index=True, width="stretch")
 
     col1, col2 = st.columns(2)
