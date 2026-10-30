@@ -127,8 +127,8 @@ def _build_reset_url(token):
 
 
 def _send_reset_email(recipient, reset_url):
-    api_key = _setting("sendgrid_api_key")
-    sender = _setting("sendgrid_from_email")
+    api_key = _setting("brevo_api_key")
+    sender = _setting("brevo_from_email")
     email_text = (
         "We received a request to reset your AI Attendance teacher password.\n\n"
         f"Use this link within one hour:\n{reset_url}\n\n"
@@ -136,17 +136,17 @@ def _send_reset_email(recipient, reset_url):
     )
     payload = json.dumps(
         {
-            "personalizations": [{"to": [{"email": recipient}]}],
-            "from": {"email": sender},
+            "sender": {"email": sender, "name": "AI Attendance"},
+            "to": [{"email": recipient}],
             "subject": "Reset your AI Attendance teacher password",
-            "content": [{"type": "text/plain", "value": email_text}],
+            "textContent": email_text,
         }
     ).encode("utf-8")
     request = Request(
-        "https://api.sendgrid.com/v3/mail/send",
+        "https://api.brevo.com/v3/smtp/email",
         data=payload,
         headers={
-            "Authorization": f"Bearer {api_key}",
+            "api-key": api_key,
             "Content-Type": "application/json",
             "User-Agent": "AI-Attendance/1.0",
         },
@@ -155,17 +155,17 @@ def _send_reset_email(recipient, reset_url):
 
     try:
         with urlopen(request, timeout=20) as response:
-            if response.status != 202:
+            if response.status != 201:
                 raise RuntimeError(
-                    f"SendGrid returned unexpected status {response.status}."
+                    f"Brevo returned unexpected status {response.status}."
                 )
     except HTTPError as error:
         error_body = error.read().decode("utf-8", errors="replace")
         raise RuntimeError(
-            f"SendGrid rejected the reset email (HTTP {error.code}): {error_body}"
+            f"Brevo rejected the reset email (HTTP {error.code}): {error_body}"
         ) from error
     except URLError as error:
-        raise RuntimeError(f"Could not connect to SendGrid: {error.reason}") from error
+        raise RuntimeError(f"Could not connect to Brevo: {error.reason}") from error
 
 
 def request_password_reset(email):
