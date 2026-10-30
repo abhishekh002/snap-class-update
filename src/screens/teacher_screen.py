@@ -1,8 +1,7 @@
-import smtplib
 from datetime import datetime, timezone
 
 import streamlit as st
-from postgrest.exceptions import APIError
+from supabase import PostgrestAPIError as APIError
 
 from src.components.footer import footer_dashboard
 from src.components.dialog_create_subject import create_subject_dialog
@@ -523,7 +522,7 @@ def teacher_screen_login():
             else:
                 try:
                     request_password_reset(reset_email)
-                except (OSError, RuntimeError, ValueError, smtplib.SMTPException) as error:
+                except (OSError, RuntimeError, ValueError) as error:
                     st.error(f"Could not send the reset email: {error}")
                 else:
                     st.info(

@@ -1,13 +1,12 @@
 import base64
-from email.message import EmailMessage
 import hashlib
 import hmac
 import json
 import os
-import smtplib
-import ssl
 import time
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit, urlunsplit
+from urllib.request import Request, urlopen
 
 import streamlit as st
 
@@ -94,13 +93,16 @@ def validate_reset_token(token):
 
 
 def _build_reset_url(token):
-    public_url = os.environ.get("SNAPCLASS_PUBLIC_URL") or st.secrets.get(
-        "public_app_url"
+    public_url = (
+        os.environ.get("AI_ATTENDANCE_PUBLIC_URL")
+        or st.secrets.get("public_app_url")
+        or os.environ.get("SNAPCLASS_PUBLIC_URL")
     )
     public_url = public_url or st.context.url
     if not public_url:
         raise RuntimeError(
-            "Configure public_app_url in Streamlit secrets or SNAPCLASS_PUBLIC_URL."
+            "Configure public_app_url in Streamlit secrets or "
+            "AI_ATTENDANCE_PUBLIC_URL."
         )
 
     parsed_url = urlsplit(public_url)
@@ -125,38 +127,47 @@ def _build_reset_url(token):
 
 
 def _send_reset_email(recipient, reset_url):
-    host = _setting("smtp_host")
-    port = int(_setting("smtp_port"))
-    username = _setting("smtp_username")
-    password = _setting("smtp_password")
-    sender = _setting("smtp_from_email")
-
-    message = EmailMessage()
-    message["Subject"] = "Reset your SnapClass teacher password"
-    message["From"] = sender
-    message["To"] = recipient
-    message.set_content(
-        "We received a request to reset your SnapClass teacher password.\n\n"
-        f"Use this link within one hour:\n{reset_url}\n\n"
-        "If you did not request this, you can ignore this email."
+    api_key = _setting("resend_api_key")
+    sender = _setting("resend_from_email")
+    payload = json.dumps(
+        {
+            "from": sender,
+            "to": [recipient],
+            "subject": "Reset your AI Attendance teacher password",
+            "text": (
+                "We received a request to reset your AI Attendance teacher password.\n\n"
+                f"Use this link within one hour:\n{reset_url}\n\n"
+                "If you did not request this, you can ignore this email."
+            ),
+        }
+    ).encode("utf-8")
+    request = Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
     )
 
-    if port == 465:
-        with smtplib.SMTP_SSL(
-            host, port, timeout=20, context=ssl.create_default_context()
-        ) as server:
-            server.login(username, password)
-            refused = server.send_message(message)
-    else:
-        with smtplib.SMTP(host, port, timeout=20) as server:
-            server.ehlo()
-            server.starttls(context=ssl.create_default_context())
-            server.ehlo()
-            server.login(username, password)
-            refused = server.send_message(message)
+    try:
+        with urlopen(request, timeout=20) as response:
+            response_body = response.read()
+    except HTTPError as error:
+        error_body = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Resend rejected the reset email (HTTP {error.code}): {error_body}"
+        ) from error
+    except URLError as error:
+        raise RuntimeError(f"Could not connect to Resend: {error.reason}") from error
 
-    if refused:
-        raise RuntimeError("The SMTP server did not accept the reset email recipient.")
+    try:
+        result = json.loads(response_body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise RuntimeError("Resend returned an invalid response.") from error
+    if not result.get("id"):
+        raise RuntimeError("Resend did not confirm that it accepted the reset email.")
 
 
 def request_password_reset(email):
