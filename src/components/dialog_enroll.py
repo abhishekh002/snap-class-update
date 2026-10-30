@@ -26,7 +26,7 @@ def enroll_dialog():
         try:
             subject = get_subject_by_code(join_code.strip())
             if subject is None:
-                st.warning("No subject found with that code.")
+                st.warning("No subject was found with that code.")
                 return
 
             enrollment = enroll_student_to_subject(

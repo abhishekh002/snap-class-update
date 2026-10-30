@@ -4,7 +4,7 @@ from supabase import PostgrestAPIError as APIError
 from src.database.db import create_attendance
 
 
-@st.dialog("Attendance Reports")
+@st.dialog("Attendance Review")
 def attendance_result_dialog(df, logs, photo_analysis=None):
     st.write("Please review attendance before confirming.")
     if photo_analysis:

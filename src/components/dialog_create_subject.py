@@ -3,7 +3,7 @@ from src.database.db import create_subject
 
 @st.dialog('Create New Subject')
 def create_subject_dialog(teacher_id):
-    st.write('Enter the details of new subject')
+    st.write('Enter the details for the new subject.')
     sub_id = st.text_input('Subject Code',placeholder='#702EA')
     sub_name = st.text_input('Subject Name',placeholder='DATA SCIENCE & ARTIFICIAL INTELLIGENCE')
     sub_section = st.text_input('Section',placeholder='B')
@@ -13,9 +13,9 @@ def create_subject_dialog(teacher_id):
         if sub_id and sub_name and sub_section:
             try:
                 create_subject(sub_id,sub_name,sub_section,teacher_id)
-                st.toast('Subject Created Successfully!')
+                st.toast('Subject created successfully!')
                 st.rerun()
             except Exception as e:
-                st.error(f"Error:{str(e)}")
+                st.error(f"Error: {e}")
         else:
-            st.warning('Please fill all the fields')
+            st.warning('Please fill in all fields.')

@@ -28,7 +28,7 @@ def auto_enroll_dialog(subject_code):
         st.error(f"Could not look up this subject: {error.message}")
         return
     if not res.data:
-        st.error("Subject code not found.")
+        st.error("No subject was found for this code.")
         if st.button("Close", key="auto_enroll_not_found_close"):
             st.query_params.pop("join-code", None)
             st.rerun()
@@ -75,6 +75,6 @@ def auto_enroll_dialog(subject_code):
             if not enrolled:
                 st.info("You are already enrolled.")
             else:
-                st.success("Joined successfully!")
+                st.success("Enrolled successfully!")
             st.query_params.pop("join-code", None)
             st.rerun()

@@ -122,7 +122,7 @@ def student_dashboard():
                 key=f"unenroll_{current_subject_id}",
             ):
                 unenroll_student_to_subject(student_id, current_subject_id)
-                st.toast(f"Unenrolled from {subject_name} successfully.")
+                st.toast(f"You have been unenrolled from {subject_name}.")
                 st.rerun()
 
         with cols[i % 2]:
@@ -151,7 +151,7 @@ def student_screen():
         header_dashboard()
     with col2:
         if st.button(
-            "GO BACK TO HOME",
+            "Back to Home",
             type="secondary",
             key="loginbackbtn",
         ):
@@ -201,7 +201,7 @@ def student_screen():
 
     if show_registration:
         with st.container(border=True):
-            st.header("Register new Profile")
+            st.header("Register a New Profile")
             new_name = st.text_input(
                 "Enter your name",
                 placeholder="E.g. Abhishekh Tiwari",

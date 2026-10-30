@@ -48,8 +48,8 @@ def share_subject_dialog(subject_name, subject_code):
         st.markdown('### Copy Link')
         st.code(join_url, language="text")
         st.code(subject_code, language="text")
-        st.info('Copy this link to share on Whatsapp or Email')
+        st.info('Copy this link to share via WhatsApp or email.')
 
     with col2:
         st.markdown('### Scan to Join')
-        st.image(out.getvalue(), caption='QR code for class joining')
+        st.image(out.getvalue(), caption='QR code to join the class')

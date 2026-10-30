@@ -28,7 +28,7 @@ from src.components.subject_card import Subject_card
 
 from src.components.dialog_share_subject import share_subject_dialog
 from src.components.dialog_add_photo import add_photos_dialog
-from src.components.dialog_attendence_result import attendance_result_dialog
+from src.components.dialog_attendance_result import attendance_result_dialog
 from src.components.dialog_voice import voice_attendance_dialog
 
 from src.pipelines.face_pipeline import predict_attendance
@@ -80,21 +80,21 @@ def register_teacher(
     teacher_pass_confirm,
 ):
     if not all((teacher_username, teacher_name, teacher_email, teacher_pass, teacher_pass_confirm)):
-        return False, "All fields are required!"
+        return False, "All fields are required."
     email_parts = teacher_email.strip().rsplit("@", 1)
     if len(email_parts) != 2 or not email_parts[0] or "." not in email_parts[1]:
-        return False, "Enter a valid email address"
+        return False, "Enter a valid email address."
     if teacher_pass != teacher_pass_confirm:
-        return False, "Passwords don't match"
+        return False, "Passwords don't match."
 
     if len(teacher_pass) < 6:
-        return False, "Password must be at least 6 characters"
+        return False, "Password must be at least 6 characters."
 
     try:
         if check_teacher_exists(teacher_username):
-            return False, "Username already taken"
+            return False, "That username is already taken."
         if check_teacher_email_exists(teacher_email):
-            return False, "Email address already in use"
+            return False, "That email address is already in use."
         create_teacher(teacher_username, teacher_pass, teacher_name, teacher_email)
     except APIError as error:
         if error.code == "42703" and "teachers.email" in error.message:
@@ -106,7 +106,7 @@ def register_teacher(
                 "then try again.",
             )
         return False, f"Could not register the teacher: {error.message}"
-    return True, "Successfully created! Login now."
+    return True, "Account created successfully. Log in now."
 
 
 def teacher_screen():
@@ -166,14 +166,14 @@ def teacher_dashboard():
 
 def teacher_tab_take_attendance():
     teacher_id = st.session_state.teacher_data['teacher_id']
-    st.header('Take AI Attendance')
+    st.header('Take Attendance with AI')
 
     if 'attendance_images' not in st.session_state:
         st.session_state.attendance_images = []
 
     subjects = get_teacher_subject(teacher_id)
     if not subjects:
-        st.warning('You havent created any subjects yet! Please create one to begin!')
+        st.warning("You haven't created any subjects yet. Create one to get started.")
         return
 
     subject_options = {f"{s['name']} - {s['subject_code']}": s['subject_id'] for s in subjects}
@@ -237,7 +237,7 @@ def teacher_tab_take_attendance():
 
             enrolled_students = enrolled_res.data or []
             if not enrolled_students:
-                st.warning("No students enrolled in this course.")
+                st.warning("No students are enrolled in this subject.")
                 return
 
             candidate_student_ids = [
@@ -247,7 +247,7 @@ def teacher_tab_take_attendance():
                 and node["students"].get("student_id") is not None
             ]
             if not candidate_student_ids:
-                st.warning("No valid enrolled student records were found.")
+                st.warning("No valid student enrollment records were found.")
                 return
 
             with st.spinner("Deep scanning classroom photos..."):
@@ -319,7 +319,7 @@ def teacher_tab_take_attendance():
                     })
 
                 if not attendance_to_log:
-                    st.warning("No valid enrolled student records were found.")
+                    st.warning("No valid student enrollment records were found.")
                     return
 
             attendance_result_dialog(
@@ -342,7 +342,7 @@ def teacher_tab_manage_subjects():
     teacher_id = st.session_state.teacher_data["teacher_id"]
     heading_col, create_col = st.columns(2)
     with heading_col:
-        st.header('Manage Subject',width='stretch')
+        st.header('Manage Subjects', width='stretch')
     with create_col:
         if st.button('Create New Subject', width='stretch'):
             create_subject_dialog(teacher_id)
@@ -466,7 +466,7 @@ def teacher_password_reset():
     if not reset_token:
         return False
 
-    st.header("Reset teacher password")
+    st.header("Reset Your Teacher Password")
     teacher = validate_reset_token(reset_token)
     if teacher is None:
         st.error("This password reset link is invalid or has expired.")
@@ -514,7 +514,7 @@ def teacher_screen_login():
     with c1:
         header_dashboard()
     with c2:
-        if st.button("GO BACK TO HOME", type="secondary", key="loginbackbtn"):
+        if st.button("Back to Home", type="secondary", key="loginbackbtn"):
             st.session_state["login_type"] = None
             st.session_state["teacher_login_type"] = "login"
             st.session_state.pop("current_teacher_tab", None)
@@ -533,11 +533,11 @@ def teacher_screen_login():
     st.space()
     st.space()
     teacher_email = st.text_input(
-        "Enter email",
+        "Enter your email address",
         placeholder="teacher@example.com",
         key="teacher_login_email",
     )
-    teacher_pass = st.text_input("Enter password", type="password", placeholder="Enter password", key="teacher_login_password")
+    teacher_pass = st.text_input("Enter your password", type="password", placeholder="Enter your password", key="teacher_login_password")
     st.divider()
     btnc1 , btnc2 = st.columns(2)
 
@@ -549,7 +549,7 @@ def teacher_screen_login():
                 st.rerun()
             st.error("Invalid email or password.")
     with btnc2:
-        if st.button("Register Instead", type="primary", icon=":material/person_add:", width="stretch"):
+        if st.button("Register instead", type="primary", icon=":material/person_add:", width="stretch"):
             st.session_state.teacher_login_type = "register"
             st.rerun()
 
@@ -578,7 +578,7 @@ def teacher_screen_register():
     with c1:
         header_dashboard()
     with c2:
-        if st.button("GO BACK TO HOME", type="secondary", key="register_back_home"):
+        if st.button("Back to Home", type="secondary", key="register_back_home"):
             st.session_state["login_type"] = None
             st.session_state["teacher_login_type"] = "login"
             st.session_state.pop("current_teacher_tab", None)
@@ -589,19 +589,19 @@ def teacher_screen_register():
     st.space()
     st.space()
 
-    teacher_username = st.text_input("Enter username", placeholder="@abhishekh", key="teacher_register_username")
+    teacher_username = st.text_input("Enter a username", placeholder="@abhishekh", key="teacher_register_username")
 
-    teacher_name = st.text_input("Enter name", placeholder="Abhishekh kumar Tiwari", key="teacher_register_name")
+    teacher_name = st.text_input("Enter your name", placeholder="Abhishekh Kumar Tiwari", key="teacher_register_name")
 
     teacher_email = st.text_input(
-        "Enter email",
+        "Enter your email address",
         placeholder="teacher@example.com",
         key="teacher_register_email",
     )
 
-    teacher_pass = st.text_input("Enter password", type="password", placeholder="Enter password", key="teacher_register_password")
+    teacher_pass = st.text_input("Enter your password", type="password", placeholder="Enter your password", key="teacher_register_password")
 
-    teacher_pass_confirm = st.text_input("Confirm your password", type="password", placeholder="Confirm password", key="teacher_register_password_confirm")
+    teacher_pass_confirm = st.text_input("Confirm your password", type="password", placeholder="Confirm your password", key="teacher_register_password_confirm")
 
 
     st.divider()
@@ -609,7 +609,7 @@ def teacher_screen_register():
     btnc1 , btnc2 = st.columns(2)
 
     with btnc1:
-        if st.button("Register Now", icon=":material/passkey:", width="stretch"):
+        if st.button("Register now", icon=":material/passkey:", width="stretch"):
             success, message = register_teacher(
                 teacher_username,
                 teacher_name,
@@ -624,7 +624,7 @@ def teacher_screen_register():
             else:
                 st.error(message)
     with btnc2:
-        if st.button("Login Instead", type="primary", icon=":material/passkey:", width="stretch"):
+        if st.button("Log in instead", type="primary", icon=":material/passkey:", width="stretch"):
             st.session_state.teacher_login_type = "login"
             st.rerun()
     footer_dashboard()

@@ -48,7 +48,7 @@ def voice_attendance_dialog(selected_subject_id):
                 if isinstance(node.get("students"), dict)
             ]
             if not enrolled_students:
-                st.warning("No students are enrolled in this course.")
+                st.warning("No students are enrolled in this subject.")
                 return
 
             candidates = {
