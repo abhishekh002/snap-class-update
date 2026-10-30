@@ -5,7 +5,7 @@ import streamlit as st
 
 from src.database.db import get_all_students
 
-FACE_MATCH_THRESHOLD = 0.45
+FACE_MATCH_THRESHOLD = 0.6
 FACE_MATCH_MARGIN = 0.05
 FACE_DETECTION_UPSAMPLE = 2
 

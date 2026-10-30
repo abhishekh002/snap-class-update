@@ -252,19 +252,47 @@ def teacher_tab_take_attendance():
 
             with st.spinner("Deep scanning classroom photos..."):
                 detected_sources = {}
+                photo_analysis = []
+                student_names = {
+                    str(node["students"]["student_id"]): node["students"]["name"]
+                    for node in enrolled_students
+                    if node.get("students")
+                    and node["students"].get("student_id") is not None
+                }
 
                 for image_index, image in enumerate(
                     st.session_state.attendance_images,
                     start=1,
                 ):
                     image_array = np.array(image.convert("RGB"))
-                    detected, _, _ = predict_attendance(
+                    detected, _, face_count = predict_attendance(
                         image_array,
                         candidate_student_ids=candidate_student_ids,
                     )
                     for student_id in detected:
                         detected_sources.setdefault(str(student_id), []).append(
                             f"Photo {image_index}"
+                        )
+                    recognized_names = [
+                        student_names[str(student_id)]
+                        for student_id in detected
+                        if str(student_id) in student_names
+                    ]
+                    if recognized_names:
+                        photo_analysis.append(
+                            f"Photo {image_index}: recognized "
+                            f"{', '.join(recognized_names)}."
+                        )
+                    elif face_count:
+                        photo_analysis.append(
+                            f"Photo {image_index}: detected {face_count} face(s), "
+                            "but none confidently matched an enrolled student. "
+                            "Try a closer, clearer photo with good lighting."
+                        )
+                    else:
+                        photo_analysis.append(
+                            f"Photo {image_index}: no faces detected. "
+                            "Try a closer photo with good lighting."
                         )
 
                 results, attendance_to_log = [], []
@@ -293,6 +321,10 @@ def teacher_tab_take_attendance():
                 if not attendance_to_log:
                     st.warning("No valid enrolled student records were found.")
                     return
+
+            with st.expander("Face analysis by photo"):
+                for analysis in photo_analysis:
+                    st.write(analysis)
 
             attendance_result_dialog(
                 pd.DataFrame(results),
