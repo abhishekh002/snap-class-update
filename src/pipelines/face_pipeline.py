@@ -7,6 +7,7 @@ from src.database.db import get_all_students
 
 FACE_MATCH_THRESHOLD = 0.45
 FACE_MATCH_MARGIN = 0.05
+FACE_DETECTION_UPSAMPLE = 2
 
 
 @st.cache_resource
@@ -23,7 +24,7 @@ def load_dlib_models():
 
 def get_face_embeddings(image_np):
     detector, shape_predictor, face_recognition_model = load_dlib_models()
-    faces = detector(image_np, 1)
+    faces = detector(image_np, FACE_DETECTION_UPSAMPLE)
 
     encodings = []
     for face in faces:
@@ -71,15 +72,25 @@ def train_classifier():
     return get_trained_model() is not None
 
 
-def predict_attendance(class_image_np):
+def predict_attendance(class_image_np, candidate_student_ids=None):
     encodings = get_face_embeddings(class_image_np)
     model_data = get_trained_model()
 
     if model_data is None:
         return {}, [], len(encodings)
 
-    embeddings = model_data["x"]
-    student_ids = model_data["y"]
+    candidate_ids = (
+        None
+        if candidate_student_ids is None
+        else {str(student_id) for student_id in candidate_student_ids}
+    )
+    candidate_profiles = [
+        (embedding, student_id)
+        for embedding, student_id in zip(model_data["x"], model_data["y"])
+        if candidate_ids is None or str(student_id) in candidate_ids
+    ]
+    embeddings = [profile[0] for profile in candidate_profiles]
+    student_ids = [profile[1] for profile in candidate_profiles]
     all_students = list(dict.fromkeys(student_ids))
     detected_students = {}
 

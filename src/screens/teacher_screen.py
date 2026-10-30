@@ -224,6 +224,32 @@ def teacher_tab_take_attendance():
             icon=":material/analytics:",
             disabled=not has_photos,
         ):
+            try:
+                enrolled_res = (
+                    supabase.table("subject_students")
+                    .select("*, students(*)")
+                    .eq("subject_id", selected_subject_id)
+                    .execute()
+                )
+            except APIError as error:
+                st.error(f"Could not load enrolled students: {error.message}")
+                return
+
+            enrolled_students = enrolled_res.data or []
+            if not enrolled_students:
+                st.warning("No students enrolled in this course.")
+                return
+
+            candidate_student_ids = [
+                node["students"]["student_id"]
+                for node in enrolled_students
+                if node.get("students")
+                and node["students"].get("student_id") is not None
+            ]
+            if not candidate_student_ids:
+                st.warning("No valid enrolled student records were found.")
+                return
+
             with st.spinner("Deep scanning classroom photos..."):
                 detected_sources = {}
 
@@ -232,27 +258,14 @@ def teacher_tab_take_attendance():
                     start=1,
                 ):
                     image_array = np.array(image.convert("RGB"))
-                    detected, _, _ = predict_attendance(image_array)
+                    detected, _, _ = predict_attendance(
+                        image_array,
+                        candidate_student_ids=candidate_student_ids,
+                    )
                     for student_id in detected:
                         detected_sources.setdefault(str(student_id), []).append(
                             f"Photo {image_index}"
                         )
-
-                try:
-                    enrolled_res = (
-                        supabase.table("subject_students")
-                        .select("*, students(*)")
-                        .eq("subject_id", selected_subject_id)
-                        .execute()
-                    )
-                except APIError as error:
-                    st.error(f"Could not load enrolled students: {error.message}")
-                    return
-
-                enrolled_students = enrolled_res.data or []
-                if not enrolled_students:
-                    st.warning("No students enrolled in this course.")
-                    return
 
                 results, attendance_to_log = [], []
                 logged_at = datetime.now(timezone.utc).isoformat()
