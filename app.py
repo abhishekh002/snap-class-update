@@ -7,6 +7,7 @@ from src.screens.home_screen import home_screen
 from src.screens.teacher_screen import teacher_screen
 from src.screens.student_screen import student_screen
 
+from src.components.dialog_auto_enroll import auto_enroll_dialog
 PAGE_ICON_PATH = Path(__file__).resolve().parent / "src" / "assets" / "page-icon.png"
 
 
@@ -40,11 +41,12 @@ def main():
             home_screen()
 
 
-    join_code = st.query_params.get('join-code')
+    join_code = st.query_params.get("join-code")
     if join_code:
-        if st.session_state.login_type != 'student':
-            st.session_state.login_type = 'student'
+        if st.session_state.get("login_type") != "student":
+            st.session_state["login_type"] = "student"
             st.rerun()
-        if st.session_state.get('is_logged_in') and st.session_state.get('user_role') == 'student':
+        student_data = st.session_state.get("student_data")
+        if isinstance(student_data, dict) and student_data.get("student_id") is not None:
             auto_enroll_dialog(join_code)
 main()

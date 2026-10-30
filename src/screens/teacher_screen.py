@@ -1,4 +1,6 @@
 import smtplib
+from datetime import datetime, timezone
+
 import streamlit as st
 from postgrest.exceptions import APIError
 
@@ -13,6 +15,7 @@ from src.database.db import (
     check_teacher_email_exists,
     create_teacher,
     delete_teacher_subject,
+    get_attendance_for_teacher,
     get_teacher_subject,
     teacher_login,
     update_teacher_password,
@@ -25,7 +28,19 @@ from src.components.password_reset import (
 from src.components.subject_card import Subject_card
 
 from src.components.dialog_share_subject import share_subject_dialog
+from src.components.dialog_add_photo import add_photos_dialog
+from src.components.dialog_attendence_result import attendance_result_dialog
+from src.components.dialog_voice import voice_attendance_dialog
 
+from src.pipelines.face_pipeline import predict_attendance
+
+import numpy as np
+
+from src.database.config import supabase
+
+import pandas as pd
+
+from src.database.config import supabase
 
 @st.dialog("Delete Subject")
 def confirm_delete_subject(subject_id, subject_name, teacher_id):
@@ -151,7 +166,136 @@ def teacher_dashboard():
     footer_dashboard()
 
 def teacher_tab_take_attendance():
+    teacher_id = st.session_state.teacher_data['teacher_id']
     st.header('Take AI Attendance')
+
+    if 'attendance_images' not in st.session_state:
+        st.session_state.attendance_images = []
+
+    subjects = get_teacher_subject(teacher_id)
+    if not subjects:
+        st.warning('You havent created any subjects yet! Please create one to begin!')
+        return
+
+    subject_options = {f"{s['name']} - {s['subject_code']}": s['subject_id'] for s in subjects}
+
+    col1, col2 = st.columns([3, 1],vertical_alignment='bottom')
+
+    with col1:
+        selected_subject_label = st.selectbox('Select Subject', options=list(subject_options.keys()))
+
+    with col2:
+        if st.button(
+            "Add Photos",
+            type="primary",
+            icon=":material/add_a_photo:",
+            width="stretch",
+        ):
+            add_photos_dialog()
+    selected_subject_id = subject_options[selected_subject_label]
+
+    st.divider()
+    if 'attendance_images' in st.session_state and st.session_state.attendance_images:
+        st.header('Added Photos')
+        gallery_cols = st.columns(4)
+
+        for idx, img in enumerate(st.session_state.attendance_images):
+            with gallery_cols[idx % 4]:
+                st.image(img, width='stretch', caption=f'Photo {idx+1}')
+    has_photos = bool(st.session_state.attendance_images)
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        if st.button(
+            "Clear all photos",
+            width="stretch",
+            type="tertiary",
+            icon=":material/delete:",
+            disabled=not has_photos,
+        ):
+            st.session_state.attendance_images = []
+            st.rerun()
+
+    with c2:
+
+        if st.button(
+            "Run Face Analysis",
+            width="stretch",
+            type="secondary",
+            icon=":material/analytics:",
+            disabled=not has_photos,
+        ):
+            with st.spinner("Deep scanning classroom photos..."):
+                detected_sources = {}
+
+                for image_index, image in enumerate(
+                    st.session_state.attendance_images,
+                    start=1,
+                ):
+                    image_array = np.array(image.convert("RGB"))
+                    detected, _, _ = predict_attendance(image_array)
+                    for student_id in detected:
+                        detected_sources.setdefault(str(student_id), []).append(
+                            f"Photo {image_index}"
+                        )
+
+                try:
+                    enrolled_res = (
+                        supabase.table("subject_students")
+                        .select("*, students(*)")
+                        .eq("subject_id", selected_subject_id)
+                        .execute()
+                    )
+                except APIError as error:
+                    st.error(f"Could not load enrolled students: {error.message}")
+                    return
+
+                enrolled_students = enrolled_res.data or []
+                if not enrolled_students:
+                    st.warning("No students enrolled in this course.")
+                    return
+
+                results, attendance_to_log = [], []
+                logged_at = datetime.now(timezone.utc).isoformat()
+
+                for node in enrolled_students:
+                    student = node.get("students")
+                    if not student:
+                        continue
+
+                    sources = detected_sources.get(str(student["student_id"]), [])
+                    is_present = bool(sources)
+                    results.append({
+                        "Name": student["name"],
+                        "ID": student["student_id"],
+                        "Sources": ", ".join(sources) if is_present else "-",
+                        "Status": "✅ Present" if is_present else "❌ Absent",
+                    })
+                    attendance_to_log.append({
+                        "student_id": student["student_id"],
+                        "subject_id": selected_subject_id,
+                        "logged_at": logged_at,
+                        "is_present": is_present,
+                    })
+
+                if not attendance_to_log:
+                    st.warning("No valid enrolled student records were found.")
+                    return
+
+            attendance_result_dialog(
+                pd.DataFrame(results),
+                attendance_to_log,
+            )
+    with c3:
+        if st.button(
+            "Use Voice Attendance",
+            type="primary",
+            width="stretch",
+            icon=":material/mic:",
+        ):
+            voice_attendance_dialog(selected_subject_id)
+
+
 
 def teacher_tab_manage_subjects():
     teacher_id = st.session_state.teacher_data["teacher_id"]
@@ -204,7 +348,76 @@ def teacher_tab_manage_subjects():
     else:
         st.info("No subjects found. Create one above.")
 def teacher_tab_attendance_records():
-    st.header('Attendance record')
+    st.header("Attendance Records")
+
+    teacher_id = st.session_state.teacher_data["teacher_id"]
+    try:
+        records = get_attendance_for_teacher(teacher_id)
+    except APIError as error:
+        st.error(f"Could not load attendance records: {error.message}")
+        return
+
+    if not records:
+        st.info("No attendance records yet.")
+        return
+
+    rows = []
+    for record in records:
+        subject = record.get("subjects")
+        if not isinstance(subject, dict):
+            continue
+
+        logged_at = record.get("logged_at")
+        try:
+            logged_time = datetime.fromisoformat(
+                logged_at.replace("Z", "+00:00")
+            ) if logged_at else None
+        except (TypeError, ValueError):
+            logged_time = None
+
+        rows.append(
+            {
+                "ts_group": logged_time.isoformat() if logged_time else logged_at,
+                "Time": (
+                    logged_time.strftime("%Y-%m-%d %I:%M %p")
+                    if logged_time
+                    else "N/A"
+                ),
+                "Subject": subject.get("name", "Unknown"),
+                "Subject Code": subject.get("subject_code", "N/A"),
+                "is_present": bool(record.get("is_present", False)),
+            }
+        )
+
+    if not rows:
+        st.info("No displayable attendance records were found.")
+        return
+
+    records_df = pd.DataFrame(rows)
+    summary = (
+        records_df.groupby(
+            ["ts_group", "Time", "Subject", "Subject Code"],
+            dropna=False,
+        )
+        .agg(
+            Present_Count=("is_present", "sum"),
+            Total_Count=("is_present", "count"),
+        )
+        .reset_index()
+    )
+    summary["Attendance Stats"] = (
+        "✅ "
+        + summary["Present_Count"].astype(str)
+        + " / "
+        + summary["Total_Count"].astype(str)
+        + " Students"
+    )
+    st.dataframe(
+        summary[["Time", "Subject", "Subject Code", "Attendance Stats"]],
+        hide_index=True,
+        width="stretch",
+    )
+
 
 
 def teacher_password_reset():
@@ -271,7 +484,7 @@ def teacher_screen_login():
         """
         <h2 style="text-align:center; white-space:nowrap;
                     font-size:clamp(0.85rem, 2vw, 1.5rem);">
-            Teacher Login with Email
+            Teacher Sign-In with Email
         </h2>
         """,
         unsafe_allow_html=True,

@@ -1,6 +1,7 @@
 import numpy as np
 import streamlit as st
 from PIL import Image
+from postgrest.exceptions import APIError
 
 from src.components.footer import footer_dashboard
 from src.components.header import header_dashboard
@@ -10,6 +11,7 @@ from src.database.db import (
     get_all_students,
     get_student_attendance,
     get_students_subjects,
+    update_student_voice_embedding,
     unenroll_student_to_subject,
 )
 from src.pipelines.face_pipeline import (
@@ -43,12 +45,45 @@ def student_dashboard():
             st.session_state.pop("student_data", None)
             st.rerun()
 
+    with st.expander("Set up voice attendance" if not student_data.get("voice_embedding") else "Update voice profile"):
+        st.write(
+            "Record a short phrase in a quiet place. Your voice profile will be "
+            "saved to this student account."
+        )
+        voice_recording = st.audio_input(
+            "Record your voice",
+            key=f"student_voice_setup_{student_id}",
+        )
+        if st.button(
+            "Save voice profile",
+            type="primary",
+            key=f"save_student_voice_{student_id}",
+        ):
+            if voice_recording is None:
+                st.warning("Record your voice before saving.")
+            else:
+                try:
+                    voice_embedding = get_voice_embedding(voice_recording.getvalue())
+                    if voice_embedding is None:
+                        st.error("Could not create a voice profile. Please record again.")
+                    elif update_student_voice_embedding(student_id, voice_embedding):
+                        st.session_state.student_data["voice_embedding"] = voice_embedding
+                        st.toast("Voice profile saved.")
+                        st.rerun()
+                    else:
+                        st.error("The voice profile was not saved. Please try again.")
+                except APIError as error:
+                    st.error(f"Could not save your voice profile: {error.message}")
+                except (RuntimeError, ValueError) as error:
+                    st.error(f"Could not process the recording: {error}")
+
     st.space()
     enroll_col, _ = st.columns(2)
     with enroll_col:
         st.subheader("Your enrolled subjects")
         if st.button("Enroll in a subject", type="primary", width="stretch"):
             enroll_dialog()
+
     st.divider()
     with st.spinner("Loading your enrolled subjects..."):
         subjects = get_students_subjects(student_id)
@@ -123,7 +158,7 @@ def student_screen():
             st.session_state["login_type"] = None
             st.rerun()
 
-    st.header("Login using Face_ID", text_alignment="center")
+    st.header("Sign in with Face ID", text_alignment="center")
     st.space()
     st.space()
 

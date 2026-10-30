@@ -120,8 +120,7 @@ def style_base_layout():
 # asdasd
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Climate+Crisis:YEAR@1979&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Climate+Crisis:YEAR@1979&family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=Outfit:wght@100..900&display=swap');
 
                 
          /* Hide Top Bar of streamlit */
@@ -149,7 +148,11 @@ def style_base_layout():
             }
                 
             h3, h4, p {
-                font-family: 'Outfit', sans-serif;    
+                font-family: 'Google Sans', 'Outfit', sans-serif;
+            }
+
+            body, input, textarea, select, [data-testid="stMarkdownContainer"] {
+                font-family: 'Google Sans', 'Outfit', sans-serif;
             }
                 
 

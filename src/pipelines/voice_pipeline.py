@@ -109,5 +109,4 @@ def process_bulk_audio(audio_bytes, candidates_dict, threshold=0.65):
 
         return identify_results
     except Exception as error:
-        st.error(f"Bulk audio processing failed: {error}")
-        return {}
+        raise RuntimeError(f"Bulk audio processing failed: {error}") from error

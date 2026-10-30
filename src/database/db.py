@@ -105,6 +105,20 @@ def create_student(new_name, face_embedding=None, voice_embedding=None):
     response = supabase.table("students").insert(data).execute()
     return response.data
 
+
+def update_student_voice_embedding(student_id, voice_embedding):
+    if not voice_embedding:
+        raise ValueError("A valid voice recording is required.")
+    response = (
+        supabase.table("students")
+        .update({"voice_embedding": voice_embedding})
+        .eq("student_id", student_id)
+        .select("student_id")
+        .execute()
+    )
+    return bool(response.data)
+
+
 def create_subject(subject_code: str, name: str, section: str, teacher_id: int):
     data = {
         "subject_code": subject_code,
@@ -217,4 +231,14 @@ def get_student_attendance(student_id):
         .eq("student_id", student_id)
         .execute()
     )
+    return response.data
+
+def create_attendance(logs):
+    if not logs:
+        raise ValueError("There are no attendance records to save.")
+    response = supabase.table("attendance_logs").insert(logs).execute()
+    return response.data
+
+def get_attendance_for_teacher(teacher_id):
+    response = supabase.table('attendance_logs').select("*, subjects!inner(*)").eq('subjects.teacher_id',teacher_id).execute()
     return response.data
