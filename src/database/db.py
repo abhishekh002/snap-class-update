@@ -33,8 +33,19 @@ def create_teacher(username: str, password: str, name: str, email: str):
 def get_teacher_by_email(email: str):
     response = (
         supabase.table("teachers")
-        .select("username, email, password_hash")
+        .select("teacher_id, username, email, password_hash, name")
         .eq("email", email.strip().lower())
+        .limit(1)
+        .execute()
+    )
+    return response.data[0] if response.data else None
+
+
+def get_teacher_by_id(teacher_id: int):
+    response = (
+        supabase.table("teachers")
+        .select("teacher_id, username, email, password_hash, name")
+        .eq("teacher_id", teacher_id)
         .limit(1)
         .execute()
     )
@@ -44,7 +55,7 @@ def get_teacher_by_email(email: str):
 def get_teacher_for_password_reset(username: str):
     response = (
         supabase.table("teachers")
-        .select("username, email, password_hash")
+        .select("teacher_id, username, email, password_hash, name")
         .eq("username", username)
         .limit(1)
         .execute()
@@ -52,15 +63,41 @@ def get_teacher_for_password_reset(username: str):
     return response.data[0] if response.data else None
 
 
-def update_teacher_password(username: str, password: str):
-    response = (
+def update_teacher_password(identifier, password: str):
+    new_hash = hash_pass(password)
+    # If numeric id or int, update by teacher_id primary key
+    if isinstance(identifier, int) or (isinstance(identifier, str) and identifier.isdigit()):
+        res = (
+            supabase.table("teachers")
+            .update({"password_hash": new_hash})
+            .eq("teacher_id", int(identifier))
+            .select("teacher_id, username")
+            .execute()
+        )
+        if res.data:
+            return True
+
+    # If email address
+    if isinstance(identifier, str) and "@" in identifier:
+        res = (
+            supabase.table("teachers")
+            .update({"password_hash": new_hash})
+            .eq("email", identifier.strip().lower())
+            .select("teacher_id, username")
+            .execute()
+        )
+        if res.data:
+            return True
+
+    # Otherwise update by username
+    res = (
         supabase.table("teachers")
-        .update({"password_hash": hash_pass(password)})
-        .eq("username", username)
-        .select("username")
+        .update({"password_hash": new_hash})
+        .eq("username", str(identifier))
+        .select("teacher_id, username")
         .execute()
     )
-    return bool(response.data)
+    return bool(res.data)
 
 
 def teacher_login(email: str, password: str):
