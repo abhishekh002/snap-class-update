@@ -18,11 +18,37 @@ def _ensure_dirs():
         with open(NOTES_FILE, "w", encoding="utf-8") as f:
             json.dump([], f)
 
+
+def _resolve_note_file_path(file_path: str | None) -> str | None:
+    if not file_path:
+        return file_path
+
+    path = Path(file_path)
+    if path.is_file():
+        return str(path)
+
+    portable_path = Path(file_path.replace("\\", "/"))
+    if not portable_path.is_absolute():
+        repo_path = BASE_DIR / portable_path
+        if repo_path.is_file():
+            return str(repo_path)
+
+    deployed_path = FILES_DIR / portable_path.name
+    if deployed_path.is_file():
+        return str(deployed_path)
+
+    return file_path
+
+
 def _load_notes() -> list:
     _ensure_dirs()
     try:
         with open(NOTES_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            notes = json.load(f)
+        for note in notes:
+            if isinstance(note, dict) and note.get("file_path"):
+                note["file_path"] = _resolve_note_file_path(note["file_path"])
+        return notes
     except Exception:
         return []
 
@@ -56,7 +82,7 @@ def create_note(
         target_path = FILES_DIR / safe_name
         with open(target_path, "wb") as f:
             f.write(uploaded_file.getvalue())
-        file_path = str(target_path)
+        file_path = target_path.relative_to(BASE_DIR).as_posix()
         file_size_kb = round(len(uploaded_file.getvalue()) / 1024, 1)
 
     new_note = {
