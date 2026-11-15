@@ -1,3 +1,7 @@
+import hashlib
+import hmac
+import time
+
 from datetime import datetime, timezone
 
 import streamlit as st
@@ -504,6 +508,8 @@ def teacher_password_reset():
 def teacher_screen_login():
     style_background_dashboard()
     style_base_layout()
+    if "teacher_password_reset_success" in st.session_state:
+        st.success(st.session_state.pop("teacher_password_reset_success"))
     if "teacher_registration_message" in st.session_state:
         st.success(st.session_state.pop("teacher_registration_message"))
     if teacher_password_reset():
@@ -553,24 +559,106 @@ def teacher_screen_login():
             st.session_state.teacher_login_type = "register"
             st.rerun()
 
-    with st.expander("Forgot password?"):
+    with st.expander(
+        "Forgot password?",
+        expanded=("password_reset_otp" in st.session_state),
+    ):
         reset_email = st.text_input(
             "Teacher account email",
+            placeholder="teacher@example.com",
             key="teacher_reset_email",
         )
-        if st.button("Send reset link", key="send_teacher_reset_link"):
+        reset_email_normalized = reset_email.strip().lower()
+        pending_otp = st.session_state.get("password_reset_otp")
+        if pending_otp and pending_otp["email"] != reset_email_normalized:
+            st.session_state.pop("password_reset_otp", None)
+            st.session_state.pop("password_reset_code", None)
+            pending_otp = None
+            st.warning("The email address changed. Request a new reset code.")
+
+        if st.button("Send password reset code", key="send_teacher_reset_code"):
             if not reset_email.strip():
                 st.warning("Enter the email address used for your teacher account.")
+            elif pending_otp and time.time() - pending_otp["sent_at"] < 60:
+                st.warning("Please wait one minute before requesting another code.")
             else:
                 try:
-                    request_password_reset(reset_email)
-                except (OSError, RuntimeError, ValueError) as error:
-                    st.error(f"Could not send the reset email: {error}")
+                    success, _ = request_password_reset(reset_email)
+                except Exception as error:
+                    st.error(f"Could not request password reset: {error}")
                 else:
-                    st.info(
-                        "If a teacher account exists for that email, a reset link "
-                        "has been sent."
-                    )
+                    if success:
+                        st.session_state.pop("password_reset_code", None)
+                        st.info(
+                            "If a teacher account exists for that email, a verification code "
+                            "has been sent to your email address."
+                        )
+                    else:
+                        st.warning("No teacher account was found with that email address.")
+
+        pending_otp = st.session_state.get("password_reset_otp")
+        if pending_otp:
+            st.success("A password reset code was sent. It expires in 10 minutes.")
+            st.text_input(
+                "6-digit verification code",
+                max_chars=6,
+                placeholder="Enter the code from your email",
+                key="password_reset_code",
+            )
+            new_password = st.text_input(
+                "New password",
+                type="password",
+                key="password_reset_new_password",
+            )
+            confirm_password = st.text_input(
+                "Confirm new password",
+                type="password",
+                key="password_reset_confirm_password",
+            )
+
+            if st.button("Verify code and reset password", type="primary", key="verify_password_reset"):
+                code_input = st.session_state.get("password_reset_code", "").strip()
+                if time.time() >= pending_otp["expires_at"]:
+                    st.session_state.pop("password_reset_otp", None)
+                    st.session_state.pop("password_reset_code", None)
+                    st.error("That code has expired. Request a new reset code.")
+                elif pending_otp["attempts"] >= 5:
+                    st.session_state.pop("password_reset_otp", None)
+                    st.session_state.pop("password_reset_code", None)
+                    st.error("Too many incorrect attempts. Request a new reset code.")
+                else:
+                    digest = hmac.new(
+                        bytes.fromhex(pending_otp["key"]),
+                        code_input.encode("utf-8"),
+                        hashlib.sha256,
+                    ).hexdigest()
+                    if not hmac.compare_digest(digest, pending_otp["digest"]):
+                        pending_otp["attempts"] += 1
+                        st.error("Incorrect verification code.")
+                    elif len(new_password) < 6:
+                        st.warning("Password must be at least 6 characters.")
+                    elif new_password != confirm_password:
+                        st.warning("Passwords don't match.")
+                    else:
+                        try:
+                            updated = update_teacher_password(
+                                pending_otp["teacher_id"],
+                                new_password,
+                            )
+                        except Exception as error:
+                            st.error(f"Could not update password: {error}")
+                        else:
+                            if not updated:
+                                st.error("Password could not be updated. Request a new reset code.")
+                            else:
+                                st.session_state.pop("password_reset_otp", None)
+                                st.session_state.pop("password_reset_code", None)
+                                st.session_state.pop("password_reset_new_password", None)
+                                st.session_state.pop("password_reset_confirm_password", None)
+                                st.session_state["teacher_password_reset_success"] = (
+                                    "Password updated successfully! You can now sign in with your new password."
+                                )
+                                st.rerun()
     footer_dashboard()
 
 def teacher_screen_register():
