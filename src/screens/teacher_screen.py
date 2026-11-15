@@ -1,9 +1,8 @@
 
 import hashlib
 import hmac
-import os
 import time
-from src.database.notes_db import get_notes_for_teacher, delete_note
+from src.database.notes_db import get_note_download, get_notes_for_teacher, delete_note
 from src.components.dialog_upload_note import upload_note_dialog
 from src.components.dialog_blackboard_digitizer import blackboard_digitizer_dialog
 from src.components.dialog_interactive_reader import interactive_reader_dialog
@@ -232,13 +231,13 @@ def teacher_tab_course_notes():
                 with c_action:
                     if st.button("📖 Interactive Reader", key=f"read_teacher_{note['id']}", width="stretch", icon=":material/menu_book:"):
                         interactive_reader_dialog(note)
-                    if note.get("file_path") and os.path.exists(note["file_path"]):
-                        with open(note["file_path"], "rb") as f:
-                            file_bytes = f.read()
+                    download = get_note_download(note)
+                    if download:
+                        file_bytes, file_name = download
                         st.download_button(
                             label="⬇️ Download",
                             data=file_bytes,
-                            file_name=note.get("file_name", "note_file"),
+                            file_name=file_name,
                             key=f"dl_teacher_{note['id']}",
                             width="stretch",
                         )

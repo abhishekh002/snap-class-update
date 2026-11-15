@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 
@@ -13,6 +12,7 @@ from pypdf.errors import PdfReadError
 from src.ai.digitizer import explain_note_concept
 from src.ai.agent import ask_snapclass_ai
 from src.components.assessment_flow import render_assessment_tab
+from src.database.notes_db import get_note_download
 
 
 MAX_PREVIEW_CHARS = 8000
@@ -161,13 +161,13 @@ def interactive_reader_dialog(note: dict):
 
         col_dl, col_eli5 = st.columns([1, 1])
         with col_dl:
-            if file_path and os.path.exists(file_path):
-                with open(file_path, "rb") as f:
-                    file_bytes = f.read()
+            download = get_note_download(note)
+            if download:
+                file_bytes, file_name = download
                 st.download_button(
-                    label="⬇️ Download Original File",
+                    label="⬇️ Download Note",
                     data=file_bytes,
-                    file_name=note.get("file_name", "note_file"),
+                    file_name=file_name,
                     key=f"reader_dl_{note['id']}",
                     width="stretch",
                 )

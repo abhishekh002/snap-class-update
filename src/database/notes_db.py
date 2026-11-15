@@ -40,6 +40,24 @@ def _resolve_note_file_path(file_path: str | None) -> str | None:
     return file_path
 
 
+def get_note_download(note: dict) -> tuple[bytes, str] | None:
+    file_path = _resolve_note_file_path(note.get("file_path"))
+    if file_path and os.path.isfile(file_path):
+        return Path(file_path).read_bytes(), note.get("file_name") or Path(file_path).name
+
+    description = (note.get("description") or "").strip()
+    if not description:
+        return None
+
+    title = (note.get("title") or "Course note").strip()
+    safe_title = "".join(
+        character if character.isalnum() or character in "-_" else "_"
+        for character in title
+    ).strip("_") or "course_note"
+    content = f"# {title}\n\n{description}\n"
+    return content.encode("utf-8"), f"{safe_title}.md"
+
+
 def _load_notes() -> list:
     _ensure_dirs()
     try:

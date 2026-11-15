@@ -1,6 +1,5 @@
 
-import os
-from src.database.notes_db import get_notes_for_student
+from src.database.notes_db import get_note_download, get_notes_for_student
 from src.components.dialog_ai_chat import ai_chat_dialog
 from src.components.dialog_interactive_reader import interactive_reader_dialog
 from src.components.gpa_forecaster import render_gpa_forecaster
@@ -227,13 +226,13 @@ def student_dashboard():
                         with c_nactions:
                             if st.button("📖 Interactive Reader", key=f"read_student_{note['id']}", width="stretch", type="primary", icon=":material/menu_book:"):
                                 interactive_reader_dialog(note)
-                            if note.get("file_path") and os.path.exists(note["file_path"]):
-                                with open(note["file_path"], "rb") as f:
-                                    data_bytes = f.read()
+                            download = get_note_download(note)
+                            if download:
+                                data_bytes, file_name = download
                                 st.download_button(
                                     label="⬇️ Download",
                                     data=data_bytes,
-                                    file_name=note.get("file_name", "note_file"),
+                                    file_name=file_name,
                                     key=f"dl_student_{note['id']}",
                                     width="stretch",
                                 )
