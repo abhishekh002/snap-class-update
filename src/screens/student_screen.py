@@ -112,7 +112,9 @@ def student_dashboard():
     with assessments_tab:
         st.subheader("📝 Assessments for Your Subjects")
         try:
-            assessments = get_student_dashboard_assessments(student_id)
+            assessments = get_student_dashboard_assessments(
+                student_id, student_notes
+            )
         except (APIError, PermissionError, RuntimeError) as error:
             st.error(f"Could not load assessments: {error}")
         else:

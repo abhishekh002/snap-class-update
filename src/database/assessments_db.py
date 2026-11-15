@@ -137,8 +137,13 @@ def get_teacher_assessments(note_id: str, teacher_id: int | str) -> list[dict]:
 def get_student_assessments(
     note_id: str, subject_id: int | str, student_id: int | str
 ) -> list[dict]:
+    student = st.session_state.get("student_data")
+    if not student or str(student.get("student_id")) != str(student_id):
+        raise PermissionError("Log in as the student to view assessments.")
+
+    admin_client = _get_assessment_admin_client()
     enrollment = (
-        supabase.table("subject_students")
+        admin_client.table("subject_students")
         .select("student_id")
         .eq("student_id", student_id)
         .eq("subject_id", subject_id)
@@ -149,7 +154,7 @@ def get_student_assessments(
         return []
 
     response = (
-        supabase.table("course_assessments")
+        admin_client.table("course_assessments")
         .select("*")
         .eq("note_id", str(note_id))
         .eq("subject_id", str(subject_id))
@@ -159,10 +164,20 @@ def get_student_assessments(
     return response.data or []
 
 
-def get_student_dashboard_assessments(student_id: int | str) -> list[dict]:
+def get_student_dashboard_assessments(
+    student_id: int | str, student_notes: list[dict]
+) -> list[dict]:
     student = st.session_state.get("student_data")
     if not student or str(student.get("student_id")) != str(student_id):
         raise PermissionError("Log in as the student to view assessments.")
+
+    subject_ids_by_key = {
+        str(note["subject_id"]): note["subject_id"]
+        for note in student_notes
+        if note.get("subject_id") is not None
+    }
+    if not subject_ids_by_key:
+        return []
 
     admin_client = _get_assessment_admin_client()
     enrollment_response = (
@@ -171,31 +186,31 @@ def get_student_dashboard_assessments(student_id: int | str) -> list[dict]:
         .eq("student_id", student_id)
         .execute()
     )
-    subject_ids_by_key = {
-        str(row["subject_id"]): row["subject_id"]
+    enrolled_subject_ids = {
+        str(row["subject_id"])
         for row in enrollment_response.data or []
         if row.get("subject_id") is not None
     }
-    subject_ids = list(subject_ids_by_key.values())
-    if not subject_ids:
+    accessible_notes = [
+        note
+        for note in student_notes
+        if str(note.get("subject_id")) in enrolled_subject_ids
+    ]
+    note_ids = list({str(note["id"]) for note in accessible_notes if note.get("id")})
+    if not note_ids:
         return []
 
     assessments_response = (
         admin_client.table("course_assessments")
         .select("*")
-        .in_("subject_id", subject_ids)
+        .in_("note_id", note_ids)
         .order("created_at", desc=True)
         .execute()
     )
-    subjects_response = (
-        admin_client.table("subjects")
-        .select("subject_id, name")
-        .in_("subject_id", subject_ids)
-        .execute()
-    )
     subject_names = {
-        str(subject["subject_id"]): subject.get("name", "Subject")
-        for subject in subjects_response.data or []
+        str(note["subject_id"]): note.get("subject_name", "Subject")
+        for note in accessible_notes
+        if note.get("subject_id") is not None
     }
     assessments = assessments_response.data or []
     for assessment in assessments:
