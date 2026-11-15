@@ -21,19 +21,16 @@ def add_photos_dialog():
         type_pano = "primary" if st.session_state.photo_tab == "panoramic" else "tertiary"
         if st.button("📐 Panoramic Multi-Shot", type=type_pano, width="stretch", help="For large lecture halls (100-250 students)"):
             st.session_state.photo_tab = "panoramic"
-            st.rerun()
 
     with t2:
         type_camera = "primary" if st.session_state.photo_tab == "camera" else "tertiary"
         if st.button("📸 Single Camera", type=type_camera, width="stretch"):
             st.session_state.photo_tab = "camera"
-            st.rerun()
 
     with t3:
         type_upload = "primary" if st.session_state.photo_tab == "upload" else "tertiary"
         if st.button("📁 Upload Photos", type=type_upload, width="stretch"):
             st.session_state.photo_tab = "upload"
-            st.rerun()
 
     selected_images = []
 
