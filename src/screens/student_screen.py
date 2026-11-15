@@ -4,6 +4,7 @@ from src.components.dialog_ai_chat import ai_chat_dialog
 from src.components.dialog_interactive_reader import interactive_reader_dialog
 from src.components.gpa_forecaster import render_gpa_forecaster
 from src.components.study_buddy_matcher import render_study_buddy_matcher
+from src.database.assessments_db import get_student_dashboard_assessments
 
 import numpy as np
 import streamlit as st
@@ -57,7 +58,10 @@ def student_dashboard():
                 st.session_state.pop("student_data", None)
                 st.rerun()
 
-    subjects_tab, learning_hub_tab = st.tabs(["Enrolled Subjects", "Learning Hub"])
+    student_notes = get_notes_for_student(student_id)
+    subjects_tab, assessments_tab, learning_hub_tab = st.tabs(
+        ["Enrolled Subjects", "Assessments", "Learning Hub"]
+    )
     with learning_hub_tab:
         notes_tab, impact_tab, study_buddy_tab, voice_profile_tab = st.tabs(
             [
@@ -104,6 +108,53 @@ def student_dashboard():
                     st.error(f"Could not save your voice profile: {error.message}")
                 except (RuntimeError, ValueError) as error:
                     st.error(f"Could not process the recording: {error}")
+
+    with assessments_tab:
+        st.subheader("📝 Assessments for Your Subjects")
+        try:
+            assessments = get_student_dashboard_assessments(student_id)
+        except (APIError, PermissionError, RuntimeError) as error:
+            st.error(f"Could not load assessments: {error}")
+        else:
+            if not assessments:
+                st.info("No assessments have been assigned to your enrolled subjects yet.")
+            else:
+                seen_key = f"seen_assessment_ids_{student_id}"
+                seen_ids = set(st.session_state.get(seen_key, []))
+                new_assessments = [
+                    assessment
+                    for assessment in assessments
+                    if str(assessment["id"]) not in seen_ids
+                ]
+                if new_assessments:
+                    st.toast(
+                        f"You have {len(new_assessments)} new assessment"
+                        f"{'s' if len(new_assessments) != 1 else ''}."
+                    )
+                seen_ids.update(str(assessment["id"]) for assessment in assessments)
+                st.session_state[seen_key] = list(seen_ids)
+
+                notes_by_id = {str(note["id"]): note for note in student_notes}
+                for assessment in assessments:
+                    with st.container(border=True):
+                        st.markdown(f"**{assessment['title']}**")
+                        st.caption(
+                            f"{assessment['subject_name']} · "
+                            f"Due: {assessment['due_date']} · "
+                            f"Maximum score: {assessment['max_score']}"
+                        )
+                        if assessment.get("instructions"):
+                            st.write(assessment["instructions"])
+                        note = notes_by_id.get(str(assessment["note_id"]))
+                        if note and st.button(
+                            "Open note to view or submit",
+                            key=f"student_dashboard_assessment_{assessment['id']}",
+                        ):
+                            interactive_reader_dialog(note)
+                        elif not note:
+                            st.info(
+                                "Open this subject's course notes to access the assessment."
+                            )
 
     with subjects_tab:
         enroll_col, _ = st.columns(2)
@@ -205,7 +256,6 @@ def student_dashboard():
             if st.button("🤖 Ask AI Tutor", icon=":material/smart_toy:", key="student_notes_ai_btn", width="stretch"):
                 ai_chat_dialog()
 
-        student_notes = get_notes_for_student(student_id)
         if not student_notes:
             st.info("No study notes have been uploaded yet for your enrolled subjects.")
         else:

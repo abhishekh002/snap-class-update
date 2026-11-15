@@ -159,6 +159,52 @@ def get_student_assessments(
     return response.data or []
 
 
+def get_student_dashboard_assessments(student_id: int | str) -> list[dict]:
+    student = st.session_state.get("student_data")
+    if not student or str(student.get("student_id")) != str(student_id):
+        raise PermissionError("Log in as the student to view assessments.")
+
+    admin_client = _get_assessment_admin_client()
+    enrollment_response = (
+        admin_client.table("subject_students")
+        .select("subject_id")
+        .eq("student_id", student_id)
+        .execute()
+    )
+    subject_ids_by_key = {
+        str(row["subject_id"]): row["subject_id"]
+        for row in enrollment_response.data or []
+        if row.get("subject_id") is not None
+    }
+    subject_ids = list(subject_ids_by_key.values())
+    if not subject_ids:
+        return []
+
+    assessments_response = (
+        admin_client.table("course_assessments")
+        .select("*")
+        .in_("subject_id", subject_ids)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    subjects_response = (
+        admin_client.table("subjects")
+        .select("subject_id, name")
+        .in_("subject_id", subject_ids)
+        .execute()
+    )
+    subject_names = {
+        str(subject["subject_id"]): subject.get("name", "Subject")
+        for subject in subjects_response.data or []
+    }
+    assessments = assessments_response.data or []
+    for assessment in assessments:
+        assessment["subject_name"] = subject_names.get(
+            str(assessment.get("subject_id")), "Subject"
+        )
+    return assessments
+
+
 def get_assessment_submissions(assessment_id: str) -> list[dict]:
     response = (
         supabase.table("assessment_submissions")
