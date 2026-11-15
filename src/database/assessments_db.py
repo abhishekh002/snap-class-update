@@ -1,6 +1,10 @@
+import os
 from datetime import date
 from pathlib import Path
 from uuid import uuid4
+
+import streamlit as st
+from supabase import create_client
 
 from src.database.config import supabase
 
@@ -19,15 +23,34 @@ def _validate_file(file_name: str, file_bytes: bytes) -> None:
         raise ValueError("The file must be 20 MB or smaller.")
 
 
-def _upload_file(folder: str, file_name: str, file_bytes: bytes, content_type: str) -> str:
+def _upload_file(
+    folder: str,
+    file_name: str,
+    file_bytes: bytes,
+    content_type: str,
+    storage_client=None,
+) -> str:
     safe_name = Path(file_name).name.replace(" ", "_")
     storage_path = f"{folder}/{uuid4().hex}_{safe_name}"
-    supabase.storage.from_(ASSESSMENT_BUCKET).upload(
+    client = storage_client or supabase
+    client.storage.from_(ASSESSMENT_BUCKET).upload(
         storage_path,
         file_bytes,
         {"content-type": content_type or "application/octet-stream", "upsert": "false"},
     )
     return storage_path
+
+
+def _get_assessment_admin_client():
+    service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not service_key:
+        service_key = st.secrets.get("supabase_service_role_key")
+    if not service_key:
+        raise RuntimeError(
+            "Configure the server-only supabase_service_role_key in Streamlit secrets "
+            "to publish assessments."
+        )
+    return create_client(st.secrets["supabase_url"], str(service_key))
 
 
 def create_assessment(
@@ -55,6 +78,18 @@ def create_assessment(
     if not instructions.strip() and not assignment_file_bytes:
         raise ValueError("Add assessment instructions or attach the assessment sheet.")
 
+    admin_client = _get_assessment_admin_client()
+    owned_subject = (
+        admin_client.table("subjects")
+        .select("subject_id")
+        .eq("subject_id", subject_id)
+        .eq("teacher_id", teacher_id)
+        .limit(1)
+        .execute()
+    )
+    if not owned_subject.data:
+        raise PermissionError("You can only publish assessments for your own subjects.")
+
     assessment_id = str(uuid4())
     assignment_file_path = None
     if assignment_file_bytes and assignment_file_name:
@@ -64,6 +99,7 @@ def create_assessment(
             assignment_file_name,
             assignment_file_bytes,
             assignment_file_type,
+            storage_client=admin_client,
         )
 
     assessment = {
@@ -80,7 +116,7 @@ def create_assessment(
         "assignment_file_path": assignment_file_path,
         "results_released": False,
     }
-    response = supabase.table("course_assessments").insert(assessment).execute()
+    response = admin_client.table("course_assessments").insert(assessment).execute()
     if not response.data:
         raise RuntimeError("The assessment was not saved.")
     return response.data[0]

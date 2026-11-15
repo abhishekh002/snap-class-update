@@ -29,6 +29,9 @@ def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
     if teacher_id is None:
         st.error("Your teacher account is missing an ID. Please log in again.")
         return
+    if str(note.get("teacher_id")) != str(teacher_id):
+        st.error("You can only publish assessments for your own notes.")
+        return
 
     st.markdown("### Create an assessment for this note")
     st.caption("Students enrolled in this subject will see the assessment here.")
