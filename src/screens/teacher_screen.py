@@ -706,33 +706,27 @@ def teacher_screen_login():
                     res = request_password_reset(reset_email)
                     if isinstance(res, tuple):
                         success = res[0]
-                        mode = res[1] if len(res) > 1 else None
                     else:
                         success = res
-                        mode = None
                 except Exception as error:
                     st.error(f"Could not request password reset: {error}")
                 else:
                     if success:
-                        if mode != "direct_code":
-                            st.session_state.pop("password_reset_code", None)
-                            st.info(
-                                "If a teacher account exists for that email, a verification code "
-                                "has been sent to your email address."
-                            )
-                        else:
-                            st.info("Verification code generated below.")
+                        st.session_state.pop("password_reset_code", None)
+                        st.info(
+                            "If a teacher account exists for that email, a verification code "
+                            "has been sent to your email address."
+                        )
                     else:
                         st.warning("No teacher account was found with that email address.")
 
         pending_otp = st.session_state.get("password_reset_otp")
+        if pending_otp and pending_otp.get("code"):
+            st.session_state.pop("password_reset_otp", None)
+            st.session_state.pop("password_reset_code", None)
+            pending_otp = None
         if pending_otp:
-            if pending_otp.get("code"):
-                st.warning(
-                    f"💡 **Email service is not configured.** For testing, your verification code is: **`{pending_otp['code']}`**"
-                )
-            else:
-                st.success("A password reset code was sent to your email. It expires in 10 minutes.")
+            st.success("A password reset code was sent to your email. It expires in 10 minutes.")
             st.text_input(
                 "6-digit verification code",
                 max_chars=6,
