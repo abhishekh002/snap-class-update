@@ -29,6 +29,7 @@ def main():
     if st.query_params.get("reset_token"):
         st.session_state["login_type"] = "teacher"
         st.session_state["teacher_login_type"] = "login"
+        st.session_state["teacher_data"] = None
 
     match st.session_state['login_type']:
         case 'teacher':

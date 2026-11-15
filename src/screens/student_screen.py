@@ -1,3 +1,11 @@
+
+import os
+from src.database.notes_db import get_notes_for_student
+from src.components.dialog_ai_chat import ai_chat_dialog
+from src.components.dialog_interactive_reader import interactive_reader_dialog
+from src.components.gpa_forecaster import render_gpa_forecaster
+from src.components.study_buddy_matcher import render_study_buddy_matcher
+
 import numpy as np
 import streamlit as st
 from PIL import Image
@@ -39,13 +47,34 @@ def student_dashboard():
         header_dashboard()
     with c2:
         st.subheader(f"Good to see you, {student_data['name']}!")
-        if st.button("Logout", type="secondary", key="loginbackbtn"):
-            st.session_state["is_logged_in"] = False
-            st.session_state["user_role"] = None
-            st.session_state.pop("student_data", None)
-            st.rerun()
+        b1, b2 = st.columns(2)
+        with b1:
+            if st.button("🤖 Ask AI Tutor", key="student_top_ai_btn", icon=":material/smart_toy:", width="stretch"):
+                ai_chat_dialog()
+        with b2:
+            if st.button("Logout", type="secondary", key="loginbackbtn", width="stretch"):
+                st.session_state["is_logged_in"] = False
+                st.session_state["user_role"] = None
+                st.session_state.pop("student_data", None)
+                st.rerun()
 
-    with st.expander("Set up voice attendance" if not student_data.get("voice_embedding") else "Update voice profile"):
+    subjects_tab, learning_hub_tab = st.tabs(["Enrolled Subjects", "Learning Hub"])
+    with learning_hub_tab:
+        notes_tab, impact_tab, study_buddy_tab, voice_profile_tab = st.tabs(
+            [
+                "Course Notes",
+                "Grade Impact Simulator",
+                "Study Buddy Matcher",
+                "Voice Profile",
+            ]
+        )
+
+    with voice_profile_tab:
+        st.subheader(
+            "Set up voice attendance"
+            if not student_data.get("voice_embedding")
+            else "Update voice profile"
+        )
         st.write(
             "Record a short phrase in a quiet place. Your voice profile will be "
             "saved to this student account."
@@ -77,65 +106,139 @@ def student_dashboard():
                 except (RuntimeError, ValueError) as error:
                     st.error(f"Could not process the recording: {error}")
 
-    st.space()
-    enroll_col, _ = st.columns(2)
-    with enroll_col:
-        st.subheader("Your enrolled subjects")
-        if st.button("Enroll in a subject", type="primary", width="stretch"):
-            enroll_dialog()
+    with subjects_tab:
+        enroll_col, _ = st.columns(2)
+        with enroll_col:
+            st.subheader("Your enrolled subjects")
+            if st.button("Enroll in a subject", type="primary", width="stretch"):
+                enroll_dialog()
 
-    st.divider()
-    with st.spinner("Loading your enrolled subjects..."):
-        subjects = get_students_subjects(student_id)
-        logs = get_student_attendance(student_id)
-    stats_map = {}
-    for log in logs:
-        subject_id = log.get("subject_id", log.get("subjects_id"))
-        if subject_id is None:
-            continue
+        st.divider()
+        with st.spinner("Loading your enrolled subjects..."):
+            subjects = get_students_subjects(student_id)
+            logs = get_student_attendance(student_id)
+        stats_map = {}
+        for log in logs:
+            subject_id = log.get("subject_id", log.get("subjects_id"))
+            if subject_id is None:
+                continue
 
-        subject_stats = stats_map.setdefault(
-            str(subject_id), {"total": 0, "attended": 0}
-        )
-        subject_stats["total"] += 1
-        if log.get("is_present"):
-            subject_stats["attended"] += 1
-
-    if not subjects:
-        st.info("You are not enrolled in any subjects yet.")
-
-    cols = st.columns(2)
-    for i, subject_node in enumerate(subjects):
-        subject = subject_node.get("subjects")
-        if not subject:
-            continue
-
-        subject_id = subject["subject_id"]
-        stats = stats_map.get(str(subject_id), {"total": 0, "attended": 0})
-
-        def unenroll_button(current_subject_id=subject_id, subject_name=subject["name"]):
-            if st.button(
-                "Unenroll from this subject",
-                type="tertiary",
-                width="stretch",
-                icon=":material/person_remove:",
-                key=f"unenroll_{current_subject_id}",
-            ):
-                unenroll_student_to_subject(student_id, current_subject_id)
-                st.toast(f"You have been unenrolled from {subject_name}.")
-                st.rerun()
-
-        with cols[i % 2]:
-            Subject_card(
-                name=subject["name"],
-                code=subject["subject_code"],
-                section=subject["section"],
-                stats=[
-                    ("📅", "Total", stats["total"]),
-                    ("✅", "Attended", stats["attended"]),
-                ],
-                footer_callback=unenroll_button,
+            subject_stats = stats_map.setdefault(
+                str(subject_id), {"total": 0, "attended": 0}
             )
+            subject_stats["total"] += 1
+            if log.get("is_present"):
+                subject_stats["attended"] += 1
+
+        if not subjects:
+            st.info("You are not enrolled in any subjects yet.")
+
+        # Build stats list for GPA forecaster and study buddy matcher
+        subjects_stats_list = []
+        enrolled_subjects_data = []
+        for subject_node in subjects:
+            subj = subject_node.get("subjects")
+            if not subj:
+                continue
+            s_id = subj["subject_id"]
+            stat = stats_map.get(str(s_id), {"total": 0, "attended": 0})
+            subjects_stats_list.append({
+                "subject_id": s_id,
+                "name": subj["name"],
+                "code": subj["subject_code"],
+                "section": subj.get("section", ""),
+                "total": stat["total"],
+                "attended": stat["attended"],
+            })
+            enrolled_subjects_data.append(subj)
+
+        cols = st.columns(2)
+        for i, subject_node in enumerate(subjects):
+            subject = subject_node.get("subjects")
+            if not subject:
+                continue
+
+            subject_id = subject["subject_id"]
+            stats = stats_map.get(str(subject_id), {"total": 0, "attended": 0})
+
+            def unenroll_button(current_subject_id=subject_id, subject_name=subject["name"]):
+                if st.button(
+                    "Unenroll from this subject",
+                    type="tertiary",
+                    width="stretch",
+                    icon=":material/person_remove:",
+                    key=f"unenroll_{current_subject_id}",
+                ):
+                    unenroll_student_to_subject(student_id, current_subject_id)
+                    st.toast(f"You have been unenrolled from {subject_name}.")
+                    st.rerun()
+
+            with cols[i % 2]:
+                Subject_card(
+                    name=subject["name"],
+                    code=subject["subject_code"],
+                    section=subject["section"],
+                    stats=[
+                        ("📅", "Total", stats["total"]),
+                        ("✅", "Attended", stats["attended"]),
+                    ],
+                    footer_callback=unenroll_button,
+                )
+
+    with impact_tab:
+        if subjects_stats_list:
+            render_gpa_forecaster(subjects_stats_list)
+        else:
+            st.info("Enroll in a subject to use the attendance simulator.")
+
+    with study_buddy_tab:
+        if enrolled_subjects_data:
+            render_study_buddy_matcher(enrolled_subjects_data, student_id)
+        else:
+            st.info("Enroll in a subject to find study partners.")
+
+    with notes_tab:
+        c_nhdr, c_nai = st.columns([2, 1], vertical_alignment="center")
+        with c_nhdr:
+            st.subheader("📚 Course Notes & Study Materials")
+            st.caption("Materials uploaded by your teachers for your enrolled subjects.")
+        with c_nai:
+            if st.button("🤖 Ask AI Tutor", icon=":material/smart_toy:", key="student_notes_ai_btn", width="stretch"):
+                ai_chat_dialog()
+
+        student_notes = get_notes_for_student(student_id)
+        if not student_notes:
+            st.info("No study notes have been uploaded yet for your enrolled subjects.")
+        else:
+            notes_by_subject = {}
+            for n in student_notes:
+                notes_by_subject.setdefault(n["subject_name"], []).append(n)
+
+            for s_name, s_notes in notes_by_subject.items():
+                st.markdown(f"#### 📖 {s_name}")
+                for note in s_notes:
+                    with st.container(border=True):
+                        c_ntext, c_nactions = st.columns([3, 1])
+                        with c_ntext:
+                            st.markdown(f"**{note['title']}**")
+                            if note.get("description"):
+                                st.write(note["description"])
+                            st.caption(f"Teacher: {note.get('teacher_name')} | Uploaded: {note.get('created_at')} | {note.get('file_size_kb', 0)} KB")
+                        with c_nactions:
+                            if st.button("📖 Interactive Reader", key=f"read_student_{note['id']}", width="stretch", type="primary", icon=":material/menu_book:"):
+                                interactive_reader_dialog(note)
+                            if note.get("file_path") and os.path.exists(note["file_path"]):
+                                with open(note["file_path"], "rb") as f:
+                                    data_bytes = f.read()
+                                st.download_button(
+                                    label="⬇️ Download",
+                                    data=data_bytes,
+                                    file_name=note.get("file_name", "note_file"),
+                                    key=f"dl_student_{note['id']}",
+                                    width="stretch",
+                                )
+                            if st.button("💡 Ask AI Tutor", key=f"ask_ai_{note['id']}", width="stretch"):
+                                ai_chat_dialog(initial_prompt=f"Can you explain the key concepts of '{note['title']}' for the subject '{note['subject_name']}'? Overview: {note.get('description', '')}")
 
     footer_dashboard()
 def student_screen():

@@ -1,0 +1,354 @@
+from datetime import date
+from pathlib import Path
+from uuid import uuid4
+
+from src.database.config import supabase
+
+
+ASSESSMENT_BUCKET = "course-assessments"
+MAX_SUBMISSION_SIZE = 20 * 1024 * 1024
+ALLOWED_FILE_TYPES = {"pdf", "docx", "txt", "png", "jpg", "jpeg", "pptx"}
+
+
+def _validate_file(file_name: str, file_bytes: bytes) -> None:
+    if Path(file_name).suffix.lower().lstrip(".") not in ALLOWED_FILE_TYPES:
+        raise ValueError("Use a PDF, DOCX, TXT, PNG, JPG, JPEG, or PPTX file.")
+    if not file_bytes:
+        raise ValueError("Choose a non-empty file.")
+    if len(file_bytes) > MAX_SUBMISSION_SIZE:
+        raise ValueError("The file must be 20 MB or smaller.")
+
+
+def _upload_file(folder: str, file_name: str, file_bytes: bytes, content_type: str) -> str:
+    safe_name = Path(file_name).name.replace(" ", "_")
+    storage_path = f"{folder}/{uuid4().hex}_{safe_name}"
+    supabase.storage.from_(ASSESSMENT_BUCKET).upload(
+        storage_path,
+        file_bytes,
+        {"content-type": content_type or "application/octet-stream", "upsert": "false"},
+    )
+    return storage_path
+
+
+def create_assessment(
+    *,
+    note_id: str,
+    subject_id: int | str,
+    teacher_id: int | str,
+    title: str,
+    instructions: str,
+    due_date: date,
+    submission_mode: str,
+    max_score: float,
+    assignment_file_name: str | None = None,
+    assignment_file_bytes: bytes | None = None,
+    assignment_file_type: str = "",
+) -> dict:
+    if submission_mode not in {"online", "physical"}:
+        raise ValueError("Choose either file upload or physical submission.")
+    if max_score <= 0:
+        raise ValueError("Maximum score must be greater than zero.")
+    if due_date < date.today():
+        raise ValueError("The submission deadline cannot be in the past.")
+    if not title.strip():
+        raise ValueError("Enter an assessment title.")
+    if not instructions.strip() and not assignment_file_bytes:
+        raise ValueError("Add assessment instructions or attach the assessment sheet.")
+
+    assessment_id = str(uuid4())
+    assignment_file_path = None
+    if assignment_file_bytes and assignment_file_name:
+        _validate_file(assignment_file_name, assignment_file_bytes)
+        assignment_file_path = _upload_file(
+            f"{assessment_id}/assignment",
+            assignment_file_name,
+            assignment_file_bytes,
+            assignment_file_type,
+        )
+
+    assessment = {
+        "id": assessment_id,
+        "note_id": str(note_id),
+        "subject_id": str(subject_id),
+        "teacher_id": str(teacher_id),
+        "title": title.strip(),
+        "instructions": instructions.strip(),
+        "due_date": due_date.isoformat(),
+        "submission_mode": submission_mode,
+        "max_score": max_score,
+        "assignment_file_name": assignment_file_name,
+        "assignment_file_path": assignment_file_path,
+        "results_released": False,
+    }
+    response = supabase.table("course_assessments").insert(assessment).execute()
+    if not response.data:
+        raise RuntimeError("The assessment was not saved.")
+    return response.data[0]
+
+
+def get_teacher_assessments(note_id: str, teacher_id: int | str) -> list[dict]:
+    response = (
+        supabase.table("course_assessments")
+        .select("*")
+        .eq("note_id", str(note_id))
+        .eq("teacher_id", str(teacher_id))
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data or []
+
+
+def get_student_assessments(
+    note_id: str, subject_id: int | str, student_id: int | str
+) -> list[dict]:
+    enrollment = (
+        supabase.table("subject_students")
+        .select("student_id")
+        .eq("student_id", student_id)
+        .eq("subject_id", subject_id)
+        .limit(1)
+        .execute()
+    )
+    if not enrollment.data:
+        return []
+
+    response = (
+        supabase.table("course_assessments")
+        .select("*")
+        .eq("note_id", str(note_id))
+        .eq("subject_id", str(subject_id))
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data or []
+
+
+def get_assessment_submissions(assessment_id: str) -> list[dict]:
+    response = (
+        supabase.table("assessment_submissions")
+        .select("*")
+        .eq("assessment_id", assessment_id)
+        .order("submitted_on")
+        .execute()
+    )
+    submissions = response.data or []
+    student_ids = list({submission["student_id"] for submission in submissions})
+    if not student_ids:
+        return submissions
+
+    students_response = (
+        supabase.table("students")
+        .select("student_id, name")
+        .in_("student_id", student_ids)
+        .execute()
+    )
+    names = {
+        str(student["student_id"]): student["name"]
+        for student in (students_response.data or [])
+    }
+    for submission in submissions:
+        submission["student_name"] = names.get(
+            str(submission["student_id"]), "Student"
+        )
+    return submissions
+
+
+def get_enrolled_students(subject_id: int | str) -> list[dict]:
+    response = (
+        supabase.table("subject_students")
+        .select("student_id, students(name)")
+        .eq("subject_id", subject_id)
+        .execute()
+    )
+    students = []
+    for enrollment in response.data or []:
+        student = enrollment.get("students")
+        if student and enrollment.get("student_id") is not None:
+            students.append(
+                {
+                    "student_id": enrollment["student_id"],
+                    "name": student.get("name", "Student"),
+                }
+            )
+    return students
+
+
+def get_student_submission(assessment_id: str, student_id: int | str) -> dict | None:
+    response = (
+        supabase.table("assessment_submissions")
+        .select("*")
+        .eq("assessment_id", assessment_id)
+        .eq("student_id", str(student_id))
+        .limit(1)
+        .execute()
+    )
+    return response.data[0] if response.data else None
+
+
+def _get_assessment(assessment_id: str) -> dict:
+    response = (
+        supabase.table("course_assessments")
+        .select("*")
+        .eq("id", assessment_id)
+        .limit(1)
+        .execute()
+    )
+    if not response.data:
+        raise ValueError("This assessment is no longer available.")
+    return response.data[0]
+
+
+def _validate_student_submission(
+    assessment: dict, student_id: int | str, submission_mode: str
+) -> None:
+    if assessment["submission_mode"] != submission_mode:
+        raise ValueError("This assessment uses a different submission method.")
+    if date.today() > date.fromisoformat(assessment["due_date"]):
+        raise ValueError("The assessment deadline has passed.")
+    enrollment = (
+        supabase.table("subject_students")
+        .select("student_id")
+        .eq("student_id", student_id)
+        .eq("subject_id", assessment["subject_id"])
+        .limit(1)
+        .execute()
+    )
+    if not enrollment.data:
+        raise ValueError("You are not enrolled in this assessment's subject.")
+    if get_student_submission(assessment["id"], student_id):
+        raise ValueError("You have already submitted this assessment.")
+
+
+def submit_online_assessment(
+    assessment_id: str,
+    student_id: int | str,
+    file_name: str,
+    file_bytes: bytes,
+    content_type: str,
+) -> dict:
+    _validate_file(file_name, file_bytes)
+
+    assessment = _get_assessment(assessment_id)
+    _validate_student_submission(assessment, student_id, "online")
+    storage_path = _upload_file(
+        f"{assessment_id}/submissions/{student_id}",
+        file_name,
+        file_bytes,
+        content_type,
+    )
+    response = (
+        supabase.table("assessment_submissions")
+        .insert(
+            {
+                "assessment_id": assessment_id,
+                "student_id": str(student_id),
+                "submission_mode": "online",
+                "submitted_on": date.today().isoformat(),
+                "file_name": Path(file_name).name,
+                "file_path": storage_path,
+            }
+        )
+        .execute()
+    )
+    if not response.data:
+        raise RuntimeError("Your submission was not saved.")
+    return response.data[0]
+
+
+def record_physical_submission(
+    assessment_id: str,
+    teacher_id: int | str,
+    student_id: int | str,
+    submitted_on: date,
+) -> dict:
+    assessment = _get_assessment(assessment_id)
+    if str(assessment["teacher_id"]) != str(teacher_id):
+        raise ValueError("You cannot update this assessment.")
+    if assessment["submission_mode"] != "physical":
+        raise ValueError("This assessment accepts file uploads, not physical work.")
+    if submitted_on > date.fromisoformat(assessment["due_date"]):
+        raise ValueError("The recorded submission date is after the deadline.")
+
+    enrollment = (
+        supabase.table("subject_students")
+        .select("student_id")
+        .eq("student_id", student_id)
+        .eq("subject_id", assessment["subject_id"])
+        .limit(1)
+        .execute()
+    )
+    if not enrollment.data:
+        raise ValueError("This student is not enrolled in the assessment's subject.")
+    if get_student_submission(assessment_id, student_id):
+        raise ValueError("This student is already recorded as submitted.")
+
+    response = (
+        supabase.table("assessment_submissions")
+        .insert(
+            {
+                "assessment_id": assessment_id,
+                "student_id": str(student_id),
+                "submission_mode": "physical",
+                "submitted_on": submitted_on.isoformat(),
+            }
+        )
+        .execute()
+    )
+    if not response.data:
+        raise RuntimeError("The physical submission was not recorded.")
+    return response.data[0]
+
+
+def grade_assessment_submission(
+    submission_id: str,
+    assessment_id: str,
+    teacher_id: int | str,
+    score: float,
+    feedback: str,
+) -> dict:
+    assessment = _get_assessment(assessment_id)
+    if str(assessment["teacher_id"]) != str(teacher_id):
+        raise ValueError("You cannot grade this assessment.")
+    if assessment["results_released"]:
+        raise ValueError("Grades cannot be changed after results are released.")
+    if score < 0 or score > float(assessment["max_score"]):
+        raise ValueError("The score must be within the assessment's score range.")
+
+    response = (
+        supabase.table("assessment_submissions")
+        .update({"score": score, "feedback": feedback.strip()})
+        .eq("id", submission_id)
+        .eq("assessment_id", assessment_id)
+        .select("*")
+        .execute()
+    )
+    if not response.data:
+        raise ValueError("The submission could not be found.")
+    return response.data[0]
+
+
+def release_assessment_results(assessment_id: str, teacher_id: int | str) -> None:
+    assessment = _get_assessment(assessment_id)
+    if str(assessment["teacher_id"]) != str(teacher_id):
+        raise ValueError("You cannot release results for this assessment.")
+    if date.today() <= date.fromisoformat(assessment["due_date"]):
+        raise ValueError("Results can be released after the submission deadline.")
+
+    submissions = get_assessment_submissions(assessment_id)
+    if any(submission.get("score") is None for submission in submissions):
+        raise ValueError("Grade all received submissions before releasing results.")
+
+    response = (
+        supabase.table("course_assessments")
+        .update({"results_released": True})
+        .eq("id", assessment_id)
+        .eq("teacher_id", str(teacher_id))
+        .select("id")
+        .execute()
+    )
+    if not response.data:
+        raise RuntimeError("Assessment results could not be released.")
+
+
+def download_assessment_file(storage_path: str) -> bytes:
+    return supabase.storage.from_(ASSESSMENT_BUCKET).download(storage_path)

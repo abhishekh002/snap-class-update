@@ -406,7 +406,15 @@ def request_password_reset(email):
         return False, None
 
     code = f"{secrets.randbelow(1_000_000):06d}"
-    send_password_reset_code(teacher["email"], code)
+    email_sent = False
+    delivery_note = None
+
+    try:
+        send_password_reset_code(teacher["email"], code)
+        email_sent = True
+    except Exception as error:
+        delivery_note = str(error)
+
     key = secrets.token_bytes(32)
     st.session_state["password_reset_otp"] = {
         "email": teacher["email"].strip().lower(),
@@ -416,5 +424,10 @@ def request_password_reset(email):
         "sent_at": time.time(),
         "expires_at": time.time() + 600,
         "attempts": 0,
+        "code": code if not email_sent else None,
+        "delivery_note": delivery_note,
     }
-    return True, "email_sent"
+    if not email_sent:
+        st.session_state["password_reset_code"] = code
+
+    return True, ("email_sent" if email_sent else "direct_code")

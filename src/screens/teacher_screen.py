@@ -1,6 +1,13 @@
+
 import hashlib
 import hmac
+import os
 import time
+from src.database.notes_db import get_notes_for_teacher, delete_note
+from src.components.dialog_upload_note import upload_note_dialog
+from src.components.dialog_blackboard_digitizer import blackboard_digitizer_dialog
+from src.components.dialog_interactive_reader import interactive_reader_dialog
+from src.components.dialog_ai_chat import ai_chat_dialog
 
 from datetime import datetime, timezone
 
@@ -129,6 +136,7 @@ def teacher_dashboard():
         "take_attendance": "Take Attendance",
         "manage_subjects": "Manage Subjects",
         "attendance_records": "Attendance Records",
+        "course_notes": "Course Notes",
     }
     current_tab = st.session_state.get("current_teacher_tab")
     if current_tab not in section_titles:
@@ -136,28 +144,41 @@ def teacher_dashboard():
         st.session_state.current_teacher_tab = current_tab
 
     header_dashboard()
-    st.subheader(f"Welcome, {teacher['name']}")
-    if st.button("Logout", type="secondary", key="teacher_logout"):
-        del st.session_state["teacher_data"]
-        st.session_state["teacher_login_type"] = "login"
-        st.session_state.pop("current_teacher_tab", None)
-        st.rerun()
+    c_w, c_b = st.columns([2, 1], vertical_alignment="center")
+    with c_w:
+        st.subheader(f"Welcome, {teacher['name']}")
+    with c_b:
+        btn_ai_col, btn_log_col = st.columns(2)
+        with btn_ai_col:
+            if st.button("🤖 AI Assistant", key="teacher_ai_header_btn"):
+                ai_chat_dialog()
+        with btn_log_col:
+            if st.button("Logout", type="secondary", key="teacher_logout"):
+                del st.session_state["teacher_data"]
+                st.session_state["teacher_login_type"] = "login"
+                st.session_state.pop("current_teacher_tab", None)
+                st.rerun()
 
-    tab1, tab2, tab3 = st.columns(3)
+    tab1, tab2, tab3, tab4 = st.columns(4)
     with tab1:
         type1 = "primary" if st.session_state.current_teacher_tab == "take_attendance" else 'tertiary'
-        if st.button("Take Attendance", width="stretch", type=type1,icon=":material/fact_check:", key="take_attendance"):
+        if st.button("Take Attendance", width="stretch", type=type1, icon=":material/fact_check:", key="take_attendance"):
             st.session_state.current_teacher_tab = "take_attendance"
             st.rerun()
     with tab2:
-        type2 =  "primary" if st.session_state.current_teacher_tab == "manage_subjects" else 'tertiary'
-        if st.button("Manage Subjects", width="stretch", type=type2,icon=":material/menu_book:", key="manage_subjects"):
+        type2 = "primary" if st.session_state.current_teacher_tab == "manage_subjects" else 'tertiary'
+        if st.button("Manage Subjects", width="stretch", type=type2, icon=":material/menu_book:", key="manage_subjects"):
             st.session_state.current_teacher_tab = "manage_subjects"
             st.rerun()
     with tab3:
-        type3 =  "primary" if st.session_state.current_teacher_tab == "attendance_records" else 'tertiary'
+        type3 = "primary" if st.session_state.current_teacher_tab == "attendance_records" else 'tertiary'
         if st.button("Attendance Records", width="stretch", type=type3, icon=":material/assignment:", key="attendance_records"):
             st.session_state.current_teacher_tab = "attendance_records"
+            st.rerun()
+    with tab4:
+        type4 = "primary" if st.session_state.current_teacher_tab == "course_notes" else 'tertiary'
+        if st.button("Course Notes", width="stretch", type=type4, icon=":material/folder_shared:", key="course_notes"):
+            st.session_state.current_teacher_tab = "course_notes"
             st.rerun()
     st.divider()
     if st.session_state.current_teacher_tab == "take_attendance":
@@ -166,7 +187,66 @@ def teacher_dashboard():
         teacher_tab_manage_subjects()
     if st.session_state.current_teacher_tab == "attendance_records":
         teacher_tab_attendance_records()
+    if st.session_state.current_teacher_tab == "course_notes":
+        teacher_tab_course_notes()
     footer_dashboard()
+
+
+def teacher_tab_course_notes():
+    teacher_id = st.session_state.teacher_data.get("teacher_id", st.session_state.teacher_data.get("id"))
+    st.header("Course Notes & Materials")
+    st.write("Upload notes and study guides for your classes. Enrolled students will have immediate access.")
+
+    col_up, col_bb, col_ai = st.columns([1, 1, 1])
+    with col_up:
+        if st.button("➕ Upload Note", type="primary", icon=":material/upload_file:", key="btn_upload_note_modal", width="stretch"):
+            upload_note_dialog()
+    with col_bb:
+        if st.button("📷 Blackboard to Notes", icon=":material/photo_camera:", key="btn_bb_digitize", width="stretch", help="Transcribe chalkboard/whiteboard into LaTeX & Markdown"):
+            blackboard_digitizer_dialog()
+    with col_ai:
+        if st.button("🤖 AI Assistant", icon=":material/smart_toy:", key="btn_teacher_notes_ai", width="stretch"):
+            ai_chat_dialog()
+
+    st.divider()
+    notes = get_notes_for_teacher(teacher_id)
+    if not notes:
+        st.info("You haven't uploaded any notes yet. Click 'Upload Note' or 'Blackboard to Notes' above to get started.")
+        return
+
+    subjects_map = {}
+    for n in notes:
+        s_name = n.get("subject_name", "General")
+        subjects_map.setdefault(s_name, []).append(n)
+
+    for subj_name, subj_notes in subjects_map.items():
+        st.subheader(f"📖 {subj_name}")
+        for note in subj_notes:
+            with st.container(border=True):
+                c_info, c_action = st.columns([3, 1])
+                with c_info:
+                    st.markdown(f"**{note['title']}**")
+                    if note.get("description"):
+                        st.write(note["description"])
+                    st.caption(f"Uploaded: {note.get('created_at', '')} | Size: {note.get('file_size_kb', 0)} KB")
+                with c_action:
+                    if st.button("📖 Interactive Reader", key=f"read_teacher_{note['id']}", width="stretch", icon=":material/menu_book:"):
+                        interactive_reader_dialog(note)
+                    if note.get("file_path") and os.path.exists(note["file_path"]):
+                        with open(note["file_path"], "rb") as f:
+                            file_bytes = f.read()
+                        st.download_button(
+                            label="⬇️ Download",
+                            data=file_bytes,
+                            file_name=note.get("file_name", "note_file"),
+                            key=f"dl_teacher_{note['id']}",
+                            width="stretch",
+                        )
+                    if st.button("🗑️ Delete", key=f"del_note_{note['id']}", width="stretch"):
+                        delete_note(note["id"], teacher_id)
+                        st.toast("Note deleted.")
+                        st.rerun()
+
 
 def teacher_tab_take_attendance():
     teacher_id = st.session_state.teacher_data['teacher_id']
@@ -206,6 +286,12 @@ def teacher_tab_take_attendance():
             with gallery_cols[idx % 4]:
                 st.image(img, width='stretch', caption=f'Photo {idx+1}')
     has_photos = bool(st.session_state.attendance_images)
+    if len(st.session_state.attendance_images) > 1:
+        st.info(
+            f"📐 **Panoramic Multi-Shot Roll Call Active** ({len(st.session_state.attendance_images)} room angles staged). "
+            "The AI pipeline will scan all room angles and automatically deduplicate students who appear in overlapping edge sections."
+        )
+
     c1, c2, c3 = st.columns(3)
 
     with c1:
@@ -298,6 +384,13 @@ def teacher_tab_take_attendance():
                             f"Photo {image_index}: no faces detected. "
                             "Try a closer photo with good lighting."
                         )
+
+                dedup_count = sum(1 for s in detected_sources.values() if len(s) > 1)
+                if dedup_count > 0:
+                    photo_analysis.insert(
+                        0,
+                        f"📐 Panoramic Deduplication: Automatically identified and deduplicated {dedup_count} student(s) appearing across overlapping camera angles."
+                    )
 
                 results, attendance_to_log = [], []
                 logged_at = datetime.now(timezone.utc).isoformat()
@@ -469,37 +562,65 @@ def teacher_password_reset():
     reset_token = st.query_params.get("reset_token")
     if not reset_token:
         return False
+    if isinstance(reset_token, list):
+        reset_token = reset_token[0]
+    reset_token = str(reset_token).strip()
 
-    st.header("Reset Your Teacher Password")
+    c_hdr1, c_hdr2 = st.columns([3, 1], vertical_alignment="center")
+    with c_hdr1:
+        st.header("Reset Your Teacher Password")
+    with c_hdr2:
+        if st.button("Back to Login", type="secondary", key="cancel_reset_top"):
+            if "reset_token" in st.query_params:
+                del st.query_params["reset_token"]
+            st.rerun()
+
     teacher = validate_reset_token(reset_token)
     if teacher is None:
         st.error("This password reset link is invalid or has expired.")
         if st.button("Return to login", key="invalid_reset_return"):
-            del st.query_params["reset_token"]
+            if "reset_token" in st.query_params:
+                del st.query_params["reset_token"]
             st.rerun()
         return True
+
+    teacher_display = teacher.get("name") or teacher.get("username") or teacher.get("email")
+    st.info(f"Setting new password for: **{teacher_display}** (`{teacher.get('email')}`)")
 
     password = st.text_input(
         "New password",
         type="password",
+        placeholder="Enter at least 6 characters",
         key="teacher_reset_password",
     )
     confirm_password = st.text_input(
         "Confirm new password",
         type="password",
+        placeholder="Re-enter new password",
         key="teacher_reset_password_confirm",
     )
-    if st.button("Update password", type="primary", key="update_teacher_password"):
-        if len(password) < 6:
-            st.warning("Password must be at least 6 characters.")
-        elif password != confirm_password:
-            st.warning("Passwords don't match.")
-        elif not update_teacher_password(teacher["username"], password):
-            st.error("Password could not be updated. Please request a new reset link.")
-        else:
-            del st.query_params["reset_token"]
-            st.session_state["teacher_login_type"] = "login"
-            st.toast("Password updated. You can now sign in.")
+
+    btn_col1, btn_col2 = st.columns([2, 1])
+    with btn_col1:
+        if st.button("Update password", type="primary", key="update_teacher_password", width="stretch"):
+            if len(password) < 6:
+                st.warning("Password must be at least 6 characters.")
+            elif password != confirm_password:
+                st.warning("Passwords don't match.")
+            else:
+                identifier = teacher.get("teacher_id") or teacher.get("email") or teacher.get("username")
+                if not update_teacher_password(identifier, password):
+                    st.error("Password could not be updated. Please request a new reset link.")
+                else:
+                    if "reset_token" in st.query_params:
+                        del st.query_params["reset_token"]
+                    st.session_state["teacher_login_type"] = "login"
+                    st.session_state["teacher_password_reset_success"] = "Password updated successfully! You can now sign in with your new password."
+                    st.rerun()
+    with btn_col2:
+        if st.button("Cancel", type="secondary", key="cancel_reset_bottom", width="stretch"):
+            if "reset_token" in st.query_params:
+                del st.query_params["reset_token"]
             st.rerun()
     return True
 
@@ -508,10 +629,10 @@ def teacher_password_reset():
 def teacher_screen_login():
     style_background_dashboard()
     style_base_layout()
-    if "teacher_password_reset_success" in st.session_state:
-        st.success(st.session_state.pop("teacher_password_reset_success"))
     if "teacher_registration_message" in st.session_state:
         st.success(st.session_state.pop("teacher_registration_message"))
+    if "teacher_password_reset_success" in st.session_state:
+        st.success(st.session_state.pop("teacher_password_reset_success"))
     if teacher_password_reset():
         footer_dashboard()
         return
@@ -583,26 +704,40 @@ def teacher_screen_login():
                 st.warning("Please wait one minute before requesting another code.")
             else:
                 try:
-                    success, _ = request_password_reset(reset_email)
+                    res = request_password_reset(reset_email)
+                    if isinstance(res, tuple):
+                        success = res[0]
+                        mode = res[1] if len(res) > 1 else None
+                    else:
+                        success = res
+                        mode = None
                 except Exception as error:
                     st.error(f"Could not request password reset: {error}")
                 else:
                     if success:
-                        st.session_state.pop("password_reset_code", None)
-                        st.info(
-                            "If a teacher account exists for that email, a verification code "
-                            "has been sent to your email address."
-                        )
+                        if mode != "direct_code":
+                            st.session_state.pop("password_reset_code", None)
+                            st.info(
+                                "If a teacher account exists for that email, a verification code "
+                                "has been sent to your email address."
+                            )
+                        else:
+                            st.info("Verification code generated below.")
                     else:
                         st.warning("No teacher account was found with that email address.")
 
         pending_otp = st.session_state.get("password_reset_otp")
         if pending_otp:
-            st.success("A password reset code was sent. It expires in 10 minutes.")
+            if pending_otp.get("code"):
+                st.warning(
+                    f"💡 **Email service is not configured.** For testing, your verification code is: **`{pending_otp['code']}`**"
+                )
+            else:
+                st.success("A password reset code was sent to your email. It expires in 10 minutes.")
             st.text_input(
                 "6-digit verification code",
                 max_chars=6,
-                placeholder="Enter the code from your email",
+                placeholder="Enter 6-digit code",
                 key="password_reset_code",
             )
             new_password = st.text_input(
@@ -691,11 +826,8 @@ def teacher_screen_register():
 
     teacher_pass_confirm = st.text_input("Confirm your password", type="password", placeholder="Confirm your password", key="teacher_register_password_confirm")
 
-
     st.divider()
-
-    btnc1 , btnc2 = st.columns(2)
-
+    btnc1, btnc2 = st.columns(2)
     with btnc1:
         if st.button("Register now", icon=":material/passkey:", width="stretch"):
             success, message = register_teacher(
@@ -711,10 +843,12 @@ def teacher_screen_register():
                 st.rerun()
             else:
                 st.error(message)
+
     with btnc2:
         if st.button("Log in instead", type="primary", icon=":material/passkey:", width="stretch"):
             st.session_state.teacher_login_type = "login"
             st.rerun()
+
     footer_dashboard()
 
   
