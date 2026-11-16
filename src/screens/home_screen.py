@@ -18,7 +18,7 @@ def _show_home_tutorial():
             <iframe
                 width="100%"
                 height="500"
-                src="https://www.youtube.com/embed/PPLDKINO-bQ?start=43&rel=0"
+                src="https://www.youtube.com/embed/_UwbkAJIaCk?rel=0"
                 title="SnapClass tutorial"
                 frameborder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
