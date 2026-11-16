@@ -126,7 +126,13 @@ def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
                     assignment_bytes = download_assessment_file(
                         assessment["assignment_file_path"]
                     )
-                except StorageApiError as error:
+                except (
+                    APIError,
+                    PermissionError,
+                    RuntimeError,
+                    StorageApiError,
+                    ValueError,
+                ) as error:
                     st.error(f"Could not load the assessment sheet: {error}")
                 else:
                     st.download_button(
@@ -202,7 +208,13 @@ def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
                             submission_bytes = download_assessment_file(
                                 submission["file_path"]
                             )
-                        except StorageApiError as error:
+                        except (
+                            APIError,
+                            PermissionError,
+                            RuntimeError,
+                            StorageApiError,
+                            ValueError,
+                        ) as error:
                             st.error(f"Could not download the student file: {error}")
                         else:
                             st.download_button(
@@ -297,7 +309,13 @@ def _student_assessment_tab(note: dict, student: dict) -> None:
                     assignment_bytes = download_assessment_file(
                         assessment["assignment_file_path"]
                     )
-                except StorageApiError as error:
+                except (
+                    APIError,
+                    PermissionError,
+                    RuntimeError,
+                    StorageApiError,
+                    ValueError,
+                ) as error:
                     st.error(f"Could not load the assessment sheet: {error}")
                 else:
                     st.download_button(

@@ -448,4 +448,81 @@ def release_assessment_results(assessment_id: str, teacher_id: int | str) -> Non
 
 
 def download_assessment_file(storage_path: str) -> bytes:
-    return supabase.storage.from_(ASSESSMENT_BUCKET).download(storage_path)
+    if not storage_path:
+        raise ValueError("The assessment file path is missing.")
+
+    teacher = st.session_state.get("teacher_data")
+    student = st.session_state.get("student_data")
+    if bool(teacher) == bool(student):
+        raise PermissionError("Log in with one account to download assessment files.")
+
+    teacher_id = (
+        (teacher.get("teacher_id") or teacher.get("id")) if teacher else None
+    )
+    student_id = student.get("student_id") if student else None
+
+    admin_client = _get_assessment_admin_client()
+    assignment_response = (
+        admin_client.table("course_assessments")
+        .select("id, teacher_id, subject_id, assignment_file_path")
+        .eq("assignment_file_path", storage_path)
+        .limit(1)
+        .execute()
+    )
+    assessment = assignment_response.data[0] if assignment_response.data else None
+    submission_student_id = None
+
+    if assessment is None:
+        submission_response = (
+            admin_client.table("assessment_submissions")
+            .select("assessment_id, student_id, file_path")
+            .eq("file_path", storage_path)
+            .limit(1)
+            .execute()
+        )
+        submission = (
+            submission_response.data[0] if submission_response.data else None
+        )
+        if submission:
+            submission_student_id = submission.get("student_id")
+            assessment_response = (
+                admin_client.table("course_assessments")
+                .select("id, teacher_id, subject_id")
+                .eq("id", submission["assessment_id"])
+                .limit(1)
+                .execute()
+            )
+            assessment = (
+                assessment_response.data[0] if assessment_response.data else None
+            )
+
+    if assessment is None:
+        raise PermissionError("You are not allowed to download this assessment file.")
+
+    if teacher:
+        authorized = (
+            teacher_id is not None
+            and str(assessment.get("teacher_id")) == str(teacher_id)
+        )
+    elif student_id is not None:
+        authorized = (
+            submission_student_id is None
+            or str(submission_student_id) == str(student_id)
+        )
+        if authorized:
+            enrollment_response = (
+                admin_client.table("subject_students")
+                .select("student_id")
+                .eq("student_id", student_id)
+                .eq("subject_id", assessment["subject_id"])
+                .limit(1)
+                .execute()
+            )
+            authorized = bool(enrollment_response.data)
+    else:
+        authorized = False
+
+    if not authorized:
+        raise PermissionError("You are not allowed to download this assessment file.")
+
+    return admin_client.storage.from_(ASSESSMENT_BUCKET).download(storage_path)
