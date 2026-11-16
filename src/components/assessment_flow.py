@@ -327,7 +327,7 @@ def _student_assessment_tab(note: dict, student: dict) -> None:
 
             try:
                 submission = get_student_submission(assessment["id"], student_id)
-            except APIError as error:
+            except (APIError, PermissionError, RuntimeError) as error:
                 st.error(f"Could not load your submission: {error}")
                 continue
 
@@ -374,6 +374,7 @@ def _student_assessment_tab(note: dict, student: dict) -> None:
                             )
                         except (
                             APIError,
+                            PermissionError,
                             RuntimeError,
                             StorageApiError,
                             ValueError,

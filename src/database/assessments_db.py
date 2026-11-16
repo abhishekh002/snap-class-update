@@ -271,8 +271,19 @@ def get_enrolled_students(subject_id: int | str) -> list[dict]:
 
 
 def get_student_submission(assessment_id: str, student_id: int | str) -> dict | None:
+    student = st.session_state.get("student_data")
+    if not student or str(student.get("student_id")) != str(student_id):
+        raise PermissionError("Log in as the student to view this submission.")
+
+    admin_client = _get_assessment_admin_client()
+    assessment = _get_assessment(assessment_id, admin_client)
+    if not _is_student_enrolled(
+        admin_client, student_id, assessment["subject_id"]
+    ):
+        raise PermissionError("You are not enrolled in this assessment's subject.")
+
     response = (
-        supabase.table("assessment_submissions")
+        admin_client.table("assessment_submissions")
         .select("*")
         .eq("assessment_id", assessment_id)
         .eq("student_id", str(student_id))
@@ -282,9 +293,10 @@ def get_student_submission(assessment_id: str, student_id: int | str) -> dict | 
     return response.data[0] if response.data else None
 
 
-def _get_assessment(assessment_id: str) -> dict:
+def _get_assessment(assessment_id: str, admin_client=None) -> dict:
+    client = admin_client or _get_assessment_admin_client()
     response = (
-        supabase.table("course_assessments")
+        client.table("course_assessments")
         .select("*")
         .eq("id", assessment_id)
         .limit(1)
@@ -295,24 +307,46 @@ def _get_assessment(assessment_id: str) -> dict:
     return response.data[0]
 
 
+def _is_student_enrolled(
+    admin_client, student_id: int | str, subject_id: int | str
+) -> bool:
+    enrollment = (
+        admin_client.table("subject_students")
+        .select("student_id")
+        .eq("student_id", student_id)
+        .eq("subject_id", subject_id)
+        .limit(1)
+        .execute()
+    )
+    return bool(enrollment.data)
+
+
 def _validate_student_submission(
-    assessment: dict, student_id: int | str, submission_mode: str
+    assessment: dict,
+    student_id: int | str,
+    submission_mode: str,
+    admin_client,
 ) -> None:
+    student = st.session_state.get("student_data")
+    if not student or str(student.get("student_id")) != str(student_id):
+        raise PermissionError("Log in as the student to submit this assessment.")
     if assessment["submission_mode"] != submission_mode:
         raise ValueError("This assessment uses a different submission method.")
     if date.today() > date.fromisoformat(assessment["due_date"]):
         raise ValueError("The assessment deadline has passed.")
-    enrollment = (
-        supabase.table("subject_students")
-        .select("student_id")
-        .eq("student_id", student_id)
-        .eq("subject_id", assessment["subject_id"])
+    if not _is_student_enrolled(
+        admin_client, student_id, assessment["subject_id"]
+    ):
+        raise ValueError("You are not enrolled in this assessment's subject.")
+    existing_submission = (
+        admin_client.table("assessment_submissions")
+        .select("id")
+        .eq("assessment_id", assessment["id"])
+        .eq("student_id", str(student_id))
         .limit(1)
         .execute()
     )
-    if not enrollment.data:
-        raise ValueError("You are not enrolled in this assessment's subject.")
-    if get_student_submission(assessment["id"], student_id):
+    if existing_submission.data:
         raise ValueError("You have already submitted this assessment.")
 
 
@@ -325,16 +359,20 @@ def submit_online_assessment(
 ) -> dict:
     _validate_file(file_name, file_bytes)
 
-    assessment = _get_assessment(assessment_id)
-    _validate_student_submission(assessment, student_id, "online")
+    admin_client = _get_assessment_admin_client()
+    assessment = _get_assessment(assessment_id, admin_client)
+    _validate_student_submission(
+        assessment, student_id, "online", admin_client
+    )
     storage_path = _upload_file(
         f"{assessment_id}/submissions/{student_id}",
         file_name,
         file_bytes,
         content_type,
+        storage_client=admin_client,
     )
     response = (
-        supabase.table("assessment_submissions")
+        admin_client.table("assessment_submissions")
         .insert(
             {
                 "assessment_id": assessment_id,
