@@ -129,12 +129,19 @@ def student_dashboard():
                     if str(assessment["id"]) not in seen_ids
                 ]
                 if new_assessments:
-                    st.toast(
+                    st.info(
                         f"You have {len(new_assessments)} new assessment"
                         f"{'s' if len(new_assessments) != 1 else ''}."
                     )
-                seen_ids.update(str(assessment["id"]) for assessment in assessments)
-                st.session_state[seen_key] = list(seen_ids)
+                    if st.button(
+                        "Clear assessment notice",
+                        key=f"clear_assessment_notice_{student_id}",
+                    ):
+                        seen_ids.update(
+                            str(assessment["id"]) for assessment in assessments
+                        )
+                        st.session_state[seen_key] = list(seen_ids)
+                        st.rerun()
 
                 notes_by_id = {str(note["id"]): note for note in student_notes}
                 for assessment in assessments:
