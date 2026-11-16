@@ -349,7 +349,11 @@ def student_screen():
             )
 
             if student is None:
-                st.error("The recognized student profile could not be found.")
+                st.warning(
+                    "The recognized face has no matching student profile. "
+                    "Register a new profile below."
+                )
+                show_registration = True
             else:
                 st.session_state.is_logged_in = True
                 st.session_state.user_role = "student"
