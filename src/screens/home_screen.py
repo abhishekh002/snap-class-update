@@ -1,35 +1,18 @@
 from pathlib import Path
 
 import streamlit as st
-import streamlit.components.v1 as components
 from src.components.header import header_home
 from src.components.footer import footer_home
 from src.components.dialog_ai_chat import ai_chat_dialog
 from src.ui.base_layout import style_base_layout, style_background_home
 
 ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets"
+TUTORIAL_VIDEO_PATH = ASSETS_DIR / "SnapClass_personal_web.mp4"
 
 
 @st.dialog("SnapClass tutorial", width="large")
 def _show_home_tutorial():
-    components.html(
-        """
-        <div style="width:100%; margin:0 auto;">
-            <iframe
-                width="100%"
-                height="500"
-                src="https://www.youtube.com/embed/dtWFq9geh2w?rel=0"
-                title="SnapClass tutorial"
-                frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerpolicy="strict-origin-when-cross-origin"
-                allowfullscreen
-                style="border-radius:1rem;">
-            </iframe>
-        </div>
-        """,
-        height=510,
-    )
+    st.video(str(TUTORIAL_VIDEO_PATH))
 
 
 def home_screen():
