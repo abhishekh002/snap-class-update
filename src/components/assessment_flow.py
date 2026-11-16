@@ -108,7 +108,7 @@ def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
 
     try:
         assessments = get_teacher_assessments(str(note["id"]), teacher_id)
-    except APIError as error:
+    except (APIError, PermissionError, RuntimeError) as error:
         st.error(f"Could not load assessments: {error}")
         return
 
@@ -144,14 +144,14 @@ def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
 
             try:
                 submissions = get_assessment_submissions(assessment["id"])
-            except APIError as error:
+            except (APIError, PermissionError, RuntimeError, ValueError) as error:
                 st.error(f"Could not load student submissions: {error}")
                 continue
 
             if assessment["submission_mode"] == "physical":
                 try:
                     students = get_enrolled_students(assessment["subject_id"])
-                except APIError as error:
+                except (APIError, PermissionError, RuntimeError) as error:
                     st.error(f"Could not load the enrolled students: {error}")
                     continue
                 submitted_ids = {
@@ -186,7 +186,12 @@ def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
                                 student_options[selected_student_label]["student_id"],
                                 submitted_on,
                             )
-                        except (APIError, RuntimeError, ValueError) as error:
+                        except (
+                            APIError,
+                            PermissionError,
+                            RuntimeError,
+                            ValueError,
+                        ) as error:
                             st.error(f"Submission could not be recorded: {error}")
                         else:
                             st.success("Physical submission recorded.")
@@ -252,7 +257,12 @@ def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
                                     score,
                                     feedback,
                                 )
-                            except (APIError, RuntimeError, ValueError) as error:
+                            except (
+                                APIError,
+                                PermissionError,
+                                RuntimeError,
+                                ValueError,
+                            ) as error:
                                 st.error(f"Grade could not be saved: {error}")
                             else:
                                 submission["score"] = score
@@ -272,7 +282,12 @@ def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
             ):
                 try:
                     release_assessment_results(assessment["id"], teacher_id)
-                except (APIError, RuntimeError, ValueError) as error:
+                except (
+                    APIError,
+                    PermissionError,
+                    RuntimeError,
+                    ValueError,
+                ) as error:
                     st.error(f"Results could not be released: {error}")
                 else:
                     assessment["results_released"] = True

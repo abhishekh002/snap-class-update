@@ -123,8 +123,10 @@ def create_assessment(
 
 
 def get_teacher_assessments(note_id: str, teacher_id: int | str) -> list[dict]:
+    _require_teacher(teacher_id)
+    admin_client = _get_assessment_admin_client()
     response = (
-        supabase.table("course_assessments")
+        admin_client.table("course_assessments")
         .select("*")
         .eq("note_id", str(note_id))
         .eq("teacher_id", str(teacher_id))
@@ -221,8 +223,13 @@ def get_student_dashboard_assessments(
 
 
 def get_assessment_submissions(assessment_id: str) -> list[dict]:
+    _current_teacher_id()
+    admin_client = _get_assessment_admin_client()
+    assessment = _get_assessment(assessment_id, admin_client)
+    _require_teacher(assessment["teacher_id"])
+
     response = (
-        supabase.table("assessment_submissions")
+        admin_client.table("assessment_submissions")
         .select("*")
         .eq("assessment_id", assessment_id)
         .order("submitted_on")
@@ -234,7 +241,7 @@ def get_assessment_submissions(assessment_id: str) -> list[dict]:
         return submissions
 
     students_response = (
-        supabase.table("students")
+        admin_client.table("students")
         .select("student_id, name")
         .in_("student_id", student_ids)
         .execute()
@@ -251,23 +258,47 @@ def get_assessment_submissions(assessment_id: str) -> list[dict]:
 
 
 def get_enrolled_students(subject_id: int | str) -> list[dict]:
+    teacher_id = _current_teacher_id()
+    admin_client = _get_assessment_admin_client()
+    owned_subject = (
+        admin_client.table("subjects")
+        .select("subject_id")
+        .eq("subject_id", subject_id)
+        .eq("teacher_id", teacher_id)
+        .limit(1)
+        .execute()
+    )
+    if not owned_subject.data:
+        raise PermissionError("You can only view students in your own subjects.")
+
     response = (
-        supabase.table("subject_students")
-        .select("student_id, students(name)")
+        admin_client.table("subject_students")
+        .select("student_id")
         .eq("subject_id", subject_id)
         .execute()
     )
-    students = []
-    for enrollment in response.data or []:
-        student = enrollment.get("students")
-        if student and enrollment.get("student_id") is not None:
-            students.append(
-                {
-                    "student_id": enrollment["student_id"],
-                    "name": student.get("name", "Student"),
-                }
-            )
-    return students
+    student_ids = [
+        enrollment["student_id"]
+        for enrollment in response.data or []
+        if enrollment.get("student_id") is not None
+    ]
+    if not student_ids:
+        return []
+
+    students_response = (
+        admin_client.table("students")
+        .select("student_id, name")
+        .in_("student_id", student_ids)
+        .execute()
+    )
+    names = {
+        str(student["student_id"]): student.get("name", "Student")
+        for student in students_response.data or []
+    }
+    return [
+        {"student_id": student_id, "name": names.get(str(student_id), "Student")}
+        for student_id in student_ids
+    ]
 
 
 def get_student_submission(assessment_id: str, student_id: int | str) -> dict | None:
@@ -305,6 +336,19 @@ def _get_assessment(assessment_id: str, admin_client=None) -> dict:
     if not response.data:
         raise ValueError("This assessment is no longer available.")
     return response.data[0]
+
+
+def _current_teacher_id() -> int | str:
+    teacher = st.session_state.get("teacher_data")
+    teacher_id = (teacher.get("teacher_id") or teacher.get("id")) if teacher else None
+    if teacher_id is None:
+        raise PermissionError("Log in as the teacher to manage assessments.")
+    return teacher_id
+
+
+def _require_teacher(teacher_id: int | str) -> None:
+    if str(_current_teacher_id()) != str(teacher_id):
+        raise PermissionError("You can only manage your own assessments.")
 
 
 def _is_student_enrolled(
@@ -396,7 +440,9 @@ def record_physical_submission(
     student_id: int | str,
     submitted_on: date,
 ) -> dict:
-    assessment = _get_assessment(assessment_id)
+    _require_teacher(teacher_id)
+    admin_client = _get_assessment_admin_client()
+    assessment = _get_assessment(assessment_id, admin_client)
     if str(assessment["teacher_id"]) != str(teacher_id):
         raise ValueError("You cannot update this assessment.")
     if assessment["submission_mode"] != "physical":
@@ -404,21 +450,21 @@ def record_physical_submission(
     if submitted_on > date.fromisoformat(assessment["due_date"]):
         raise ValueError("The recorded submission date is after the deadline.")
 
-    enrollment = (
-        supabase.table("subject_students")
-        .select("student_id")
-        .eq("student_id", student_id)
-        .eq("subject_id", assessment["subject_id"])
+    if not _is_student_enrolled(admin_client, student_id, assessment["subject_id"]):
+        raise ValueError("This student is not enrolled in the assessment's subject.")
+    existing_submission = (
+        admin_client.table("assessment_submissions")
+        .select("id")
+        .eq("assessment_id", assessment_id)
+        .eq("student_id", str(student_id))
         .limit(1)
         .execute()
     )
-    if not enrollment.data:
-        raise ValueError("This student is not enrolled in the assessment's subject.")
-    if get_student_submission(assessment_id, student_id):
+    if existing_submission.data:
         raise ValueError("This student is already recorded as submitted.")
 
     response = (
-        supabase.table("assessment_submissions")
+        admin_client.table("assessment_submissions")
         .insert(
             {
                 "assessment_id": assessment_id,
@@ -441,7 +487,9 @@ def grade_assessment_submission(
     score: float,
     feedback: str,
 ) -> dict:
-    assessment = _get_assessment(assessment_id)
+    _require_teacher(teacher_id)
+    admin_client = _get_assessment_admin_client()
+    assessment = _get_assessment(assessment_id, admin_client)
     if str(assessment["teacher_id"]) != str(teacher_id):
         raise ValueError("You cannot grade this assessment.")
     if assessment["results_released"]:
@@ -450,7 +498,7 @@ def grade_assessment_submission(
         raise ValueError("The score must be within the assessment's score range.")
 
     response = (
-        supabase.table("assessment_submissions")
+        admin_client.table("assessment_submissions")
         .update({"score": score, "feedback": feedback.strip()})
         .eq("id", submission_id)
         .eq("assessment_id", assessment_id)
@@ -463,7 +511,9 @@ def grade_assessment_submission(
 
 
 def release_assessment_results(assessment_id: str, teacher_id: int | str) -> None:
-    assessment = _get_assessment(assessment_id)
+    _require_teacher(teacher_id)
+    admin_client = _get_assessment_admin_client()
+    assessment = _get_assessment(assessment_id, admin_client)
     if str(assessment["teacher_id"]) != str(teacher_id):
         raise ValueError("You cannot release results for this assessment.")
     if date.today() <= date.fromisoformat(assessment["due_date"]):
@@ -474,7 +524,7 @@ def release_assessment_results(assessment_id: str, teacher_id: int | str) -> Non
         raise ValueError("Grade all received submissions before releasing results.")
 
     response = (
-        supabase.table("course_assessments")
+        admin_client.table("course_assessments")
         .update({"results_released": True})
         .eq("id", assessment_id)
         .eq("teacher_id", str(teacher_id))
