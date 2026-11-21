@@ -142,6 +142,16 @@ def interactive_reader_dialog(note: dict):
                     "You can still download the original file."
                 )
 
+    read_aloud_text = str(preview_content or "").strip()
+    if not read_aloud_text:
+        read_aloud_text = str(note_content or "").strip()
+    if not read_aloud_text:
+        read_aloud_text = str(note.get("title") or "").strip()
+    if not read_aloud_text:
+        read_aloud_text = "No readable text is available for this note."
+        st.info("No note text was found; Play will read this message.")
+    render_tts_player(read_aloud_text, f"note_content_{note['id']}")
+
     tab_read, tab_assessment, tab_qa = st.tabs(
         ["📖 Read & Explain", "📝 Assessment", "💬 Talk to Note"]
     )
@@ -161,8 +171,6 @@ def interactive_reader_dialog(note: dict):
                 )
         if preview_notice:
             st.info(preview_notice)
-        if preview_content.strip():
-            render_tts_player(preview_content, f"note_content_{note['id']}")
 
         col_dl, col_eli5 = st.columns([1, 1])
         with col_dl:
