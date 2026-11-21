@@ -1,5 +1,18 @@
 [
   {
+    "id": "e6fe363a",
+    "subject_id": "4",
+    "subject_name": "Anlog electronic",
+    "teacher_id": "6",
+    "teacher_name": "Abhishekh Kumar Tiwari",
+    "title": "sampling (AI Blackboard Notes)",
+    "description": "Auto-digitized blackboard notes with LaTeX & Markdown.\n\n# SAMPLING THEOREM (NYQUIST-SHANNON)\n\n## 1. STATEMENT\n> \"A band-limited continuous-time signal $x(t)$ with $f_{\\text{max}}$ (or $W$) can be completely recovered if sampled at $f_s \\ge 2f_{\\text{max}}$.\"\n\n---\n\n## VISUAL REPRESENTATION (TIME & FREQUENCY DOMAINS)\n\n### Time Domain\n* ...",
+    "file_name": "sampling_digitized_notes.md",
+    "file_path": "C:\\Users\\study\\OneDrive\\Desktop\\snap-class\\data\\notes\\files\\e6fe363a_sampling_digitized_notes.md",
+    "file_size_kb": 1.8,
+    "created_at": "2026-11-15 16:30 UTC"
+  },
+  {
     "id": "2e3784a2",
     "subject_id": "4",
     "subject_name": "Anlog electronic",
