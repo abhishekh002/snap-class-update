@@ -48,7 +48,8 @@ def _get_assessment_admin_client():
     if not service_key:
         raise RuntimeError(
             "Configure the server-only supabase_service_role_key in Streamlit secrets "
-            "to publish assessments."
+            "to use assessments. Add it to .streamlit/secrets.toml and restart "
+            "Streamlit. Never expose this key in client-side code."
         )
     return create_client(st.secrets["supabase_url"], str(service_key))
 

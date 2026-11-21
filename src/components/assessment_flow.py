@@ -304,7 +304,7 @@ def _student_assessment_tab(note: dict, student: dict) -> None:
         assessments = get_student_assessments(
             str(note["id"]), note["subject_id"], student_id
         )
-    except APIError as error:
+    except (APIError, RuntimeError) as error:
         st.error(f"Could not load assessments: {error}")
         return
 
