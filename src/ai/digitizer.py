@@ -6,6 +6,10 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
+
+MAX_EXPLANATION_INPUT_CHARS = 6000
+
+
 def _get_client():
     api_key = None
     try:
@@ -45,9 +49,14 @@ def digitize_blackboard_image(image_bytes: bytes, mime_type: str = "image/jpeg")
 
 async def _explain_note_async(note_text: str) -> str:
     client = _get_client()
+    note_text = note_text.strip()
+    if len(note_text) > MAX_EXPLANATION_INPUT_CHARS:
+        note_text = (
+            note_text[:MAX_EXPLANATION_INPUT_CHARS].rstrip()
+            + "\n[Notes shortened to keep the explanation focused.]"
+        )
     prompt = f"""You are a patient, encouraging academic tutor.
-Explain the following lecture notes in simple terms (ELI5 style).
-Use real-world analogies, highlight why these concepts matter, and break down any complex formulas or steps.
+Explain these notes in simple terms. Keep it concise: state the main idea, use 3-5 bullets, and give one everyday example. Clarify only the most important formula or step. Avoid repeating the notes.
 
 Notes:
 {note_text}"""
@@ -55,6 +64,10 @@ Notes:
     res = await client.aio.models.generate_content(
         model="gemini-3.1-flash-lite",
         contents=[prompt],
+        config=types.GenerateContentConfig(
+            max_output_tokens=500,
+            thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),
+        ),
     )
     return res.text or "No explanation generated."
 

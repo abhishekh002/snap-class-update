@@ -205,23 +205,30 @@ def interactive_reader_dialog(note: dict):
                     width="stretch",
                 )
         with col_eli5:
-            if st.button("💡 Explain in Simple Terms (ELI5)", type="primary", key=f"eli5_btn_{note['id']}", width="stretch"):
-                try:
-                    with st.spinner("AI Tutor is simplifying the concepts..."):
-                        simplified = explain_note_concept(note_content)
-                except errors.ServerError:
-                    st.warning(
-                        "Gemini is temporarily busy. Please wait a moment and try again."
-                    )
-                except errors.APIError as error:
-                    st.error(f"Could not simplify this note: {error}")
-                else:
-                    st.session_state[f"eli5_cache_{note['id']}"] = simplified
+            eli5_cache_key = f"eli5_cache_{note['id']}"
+            if st.button(
+                "💡 Explain in Simple Terms (ELI5)",
+                type="primary",
+                key=f"eli5_btn_{note['id']}",
+                width="stretch",
+            ):
+                if eli5_cache_key not in st.session_state:
+                    try:
+                        with st.spinner("AI Tutor is simplifying the concepts..."):
+                            simplified = explain_note_concept(note_content)
+                    except errors.ServerError:
+                        st.warning(
+                            "Gemini is temporarily busy. Please wait a moment and try again."
+                        )
+                    except errors.APIError as error:
+                        st.error(f"Could not simplify this note: {error}")
+                    else:
+                        st.session_state[eli5_cache_key] = simplified
 
-        if f"eli5_cache_{note['id']}" in st.session_state:
+        if eli5_cache_key in st.session_state:
             st.divider()
             st.markdown("#### 💡 Simplified Explanation")
-            st.info(st.session_state[f"eli5_cache_{note['id']}"])
+            st.info(st.session_state[eli5_cache_key])
             render_tts_player(
                 st.session_state[f"eli5_cache_{note['id']}"],
                 f"eli5_{note['id']}",
