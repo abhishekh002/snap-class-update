@@ -53,7 +53,7 @@ Notes:
 {note_text}"""
 
     res = await client.aio.models.generate_content(
-        model="gemini-flash-lite-latest",
+        model="gemini-3.1-flash-lite",
         contents=[prompt],
     )
     return res.text or "No explanation generated."

@@ -3,6 +3,7 @@ from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 
 import streamlit as st
+from google.genai import errors
 from docx import Document
 from docx.opc.exceptions import PackageNotFoundError as DocxPackageNotFoundError
 from pptx import Presentation
@@ -13,6 +14,7 @@ from pypdf.errors import PdfReadError
 from src.ai.digitizer import explain_note_concept
 from src.ai.agent import ask_snapclass_ai
 from src.components.assessment_flow import render_assessment_tab
+from src.components.tts_player import render_tts_player
 from src.database.notes_db import get_note_download
 
 
@@ -159,6 +161,8 @@ def interactive_reader_dialog(note: dict):
                 )
         if preview_notice:
             st.info(preview_notice)
+        if preview_content.strip():
+            render_tts_player(preview_content, f"note_content_{note['id']}")
 
         col_dl, col_eli5 = st.columns([1, 1])
         with col_dl:
@@ -174,14 +178,26 @@ def interactive_reader_dialog(note: dict):
                 )
         with col_eli5:
             if st.button("💡 Explain in Simple Terms (ELI5)", type="primary", key=f"eli5_btn_{note['id']}", width="stretch"):
-                with st.spinner("AI Tutor is simplifying the concepts..."):
-                    simplified = explain_note_concept(note_content)
+                try:
+                    with st.spinner("AI Tutor is simplifying the concepts..."):
+                        simplified = explain_note_concept(note_content)
+                except errors.ServerError:
+                    st.warning(
+                        "Gemini is temporarily busy. Please wait a moment and try again."
+                    )
+                except errors.APIError as error:
+                    st.error(f"Could not simplify this note: {error}")
+                else:
                     st.session_state[f"eli5_cache_{note['id']}"] = simplified
 
         if f"eli5_cache_{note['id']}" in st.session_state:
             st.divider()
             st.markdown("#### 💡 Simplified Explanation")
             st.info(st.session_state[f"eli5_cache_{note['id']}"])
+            render_tts_player(
+                st.session_state[f"eli5_cache_{note['id']}"],
+                f"eli5_{note['id']}",
+            )
 
     with tab_assessment:
         render_assessment_tab(note)
@@ -199,3 +215,7 @@ def interactive_reader_dialog(note: dict):
         if f"qa_ans_{note['id']}" in st.session_state:
             st.markdown("#### Answer:")
             st.write(st.session_state[f"qa_ans_{note['id']}"])
+            render_tts_player(
+                st.session_state[f"qa_ans_{note['id']}"],
+                f"note_answer_{note['id']}",
+            )
