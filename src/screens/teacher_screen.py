@@ -818,7 +818,7 @@ def teacher_screen_login():
                     else:
                         try:
                             valid_code = verify_password_reset_code(
-                                pending_otp["otp_id"],
+                                pending_otp,
                                 code_input,
                             )
                         except Exception as error:

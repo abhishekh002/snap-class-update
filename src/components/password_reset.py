@@ -3,10 +3,9 @@ import hashlib
 import hmac
 import json
 import os
+import secrets as secure_random
 import time
-from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit, urlunsplit
-from urllib.request import Request, urlopen
 
 import streamlit as st
 
@@ -15,6 +14,7 @@ from src.database.db import (
     get_teacher_by_id,
     get_teacher_for_password_reset,
 )
+from src.components.resend_email import send_password_reset_email
 
 RESET_TOKEN_LIFETIME_SECONDS = 3600
 
@@ -190,60 +190,41 @@ def _build_reset_url(token):
     )
 
 
-def _signops_request(endpoint, fields):
-    use_test_key = os.environ.get("SIGNOPS_USE_TEST_KEY")
-    if use_test_key is None:
+def _resend_setting(secret_name, environment_name):
+    value = os.environ.get(environment_name)
+    if not value:
         try:
-            use_test_key = st.secrets.get("signops_use_test_key", False)
+            value = st.secrets.get(secret_name)
         except Exception:
-            use_test_key = False
-    test_mode = str(use_test_key).strip().lower() in {"1", "true", "yes", "on"}
-
-    secret_name = "signops_test_key" if test_mode else "signops_key"
-    environment_name = "SIGNOPS_TEST_KEY" if test_mode else "SIGNOPS_KEY"
-    api_key = os.environ.get(environment_name)
-    if not api_key:
-        try:
-            api_key = st.secrets.get(secret_name)
-        except Exception:
-            api_key = None
-    if not api_key:
-        mode = "test" if test_mode else "live"
+            value = None
+    if not value or not str(value).strip():
         raise RuntimeError(
-            f"Configure the SignOps {mode} key as {secret_name} in Streamlit secrets "
-            f"or {environment_name} in the app environment."
+            f"Configure {environment_name} in the app environment or "
+            f"{secret_name} in Streamlit secrets."
         )
+    return str(value).strip()
 
-    request = Request(
-        f"https://api.signops.dev/v1/{endpoint.lstrip('/')}",
-        data=urlencode(fields).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {str(api_key).strip()}",
-            "Accept": "application/json",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "SnapClass/1.0",
-        },
-        method="POST",
+
+def _reset_code_digest(teacher_id, email, code):
+    secret = _setting("password_reset_secret", "SNAPCLASS_PASSWORD_RESET_SECRET")
+    message = f"{teacher_id}\0{email}\0{code}".encode("utf-8")
+    return hmac.new(secret.encode("utf-8"), message, hashlib.sha256).hexdigest()
+
+
+def verify_password_reset_code(reset_state, code):
+    if not isinstance(reset_state, dict) or not isinstance(code, str):
+        return False
+    if time.time() >= reset_state.get("expires_at", 0):
+        return False
+    if reset_state.get("attempts", 0) >= 5:
+        return False
+    expected = reset_state.get("otp_hash")
+    if not expected:
+        return False
+    actual = _reset_code_digest(
+        reset_state.get("teacher_id"), reset_state.get("email", ""), code
     )
-
-    try:
-        with urlopen(request, timeout=20) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except HTTPError as error:
-        try:
-            error_body = json.loads(error.read().decode("utf-8", errors="replace"))
-            detail = error_body.get("error", {})
-            message = detail.get("message") or str(detail.get("code") or error.code)
-        except (json.JSONDecodeError, AttributeError):
-            message = f"HTTP {error.code}"
-        raise RuntimeError(f"SignOps rejected the request: {message}") from error
-    except URLError as error:
-        raise RuntimeError(f"Could not connect to SignOps: {error.reason}") from error
-
-
-def verify_password_reset_code(otp_id, code):
-    result = _signops_request("otp/verify", {"otp_id": otp_id, "code": code})
-    return bool(result.get("valid"))
+    return hmac.compare_digest(str(expected), actual)
 
 
 def request_password_reset(email):
@@ -251,20 +232,20 @@ def request_password_reset(email):
     if teacher is None:
         return False, None
 
-    response = _signops_request(
-        "otp/send",
-        {"email": teacher["email"], "app_name": "SnapClass"},
-    )
-    otp_id = response.get("otp_id")
-    if not otp_id:
-        raise RuntimeError("SignOps did not return a reset code reference.")
+    api_key = _resend_setting("resend_api_key", "RESEND_API_KEY")
+    from_email = _resend_setting("resend_from_email", "RESEND_FROM_EMAIL")
+    normalized_email = teacher["email"].strip().lower()
+    teacher_id = teacher["teacher_id"]
+    code = f"{secure_random.randbelow(1_000_000):06d}"
+    send_password_reset_email(api_key, from_email, normalized_email, code)
 
+    now = time.time()
     st.session_state["password_reset_otp"] = {
-        "email": teacher["email"].strip().lower(),
-        "teacher_id": teacher["teacher_id"],
-        "otp_id": otp_id,
-        "sent_at": time.time(),
-        "expires_at": time.time() + 600,
+        "email": normalized_email,
+        "teacher_id": teacher_id,
+        "otp_hash": _reset_code_digest(teacher_id, normalized_email, code),
+        "sent_at": now,
+        "expires_at": now + 600,
         "attempts": 0,
         "code_verified": False,
     }
