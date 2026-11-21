@@ -150,6 +150,26 @@ def interactive_reader_dialog(note: dict):
     if not read_aloud_text:
         read_aloud_text = "No readable text is available for this note."
         st.info("No note text was found; Play will read this message.")
+    st.html(
+        """
+        <style>
+        .stDialog > div:has(#note-reader-player-anchor) {
+            overflow: visible !important;
+        }
+        .stDialog div[data-testid="stVerticalBlock"]:has(#note-reader-player-anchor)
+        > div[data-testid="stElementContainer"]:has(> iframe[title="st.iframe"]) {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            padding: 0.4rem 0;
+            background: #0e1117;
+        }
+        </style>
+        <div id="note-reader-player-anchor" style="font-size:1.1rem;font-weight:600;">
+            🔊 Listen to this note
+        </div>
+        """
+    )
     render_tts_player(read_aloud_text, f"note_content_{note['id']}")
 
     tab_read, tab_assessment, tab_qa = st.tabs(
