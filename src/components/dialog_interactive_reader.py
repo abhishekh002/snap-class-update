@@ -189,6 +189,85 @@ def interactive_reader_dialog(note: dict):
     )
     render_tts_player(read_aloud_text, f"note_content_{note['id']}")
 
+    st.markdown("""
+        <style>
+            .stDialog div[data-testid="stTabs"] > div[role="tablist"] {
+                display: flex;
+                gap: .55rem;
+                padding: .45rem;
+                border: 0;
+                border-radius: 999px;
+                background: #fff0f8;
+            }
+            .stDialog div[data-testid="stTabs"] button[role="tab"] {
+                flex: 1 1 0;
+                min-height: 3rem;
+                border: 1px solid #ed3b9d;
+                border-radius: 999px;
+                background: #ed3b9d;
+                color: #fff !important;
+                font-weight: 700;
+                transition: transform .18s ease, box-shadow .18s ease;
+            }
+            .stDialog div[data-testid="stTabs"] button[role="tab"] * {
+                color: #fff !important;
+            }
+            .stDialog div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+                background: #c9257e;
+                border-color: #c9257e;
+                box-shadow: 0 5px 14px rgba(201,37,126,.22);
+            }
+            .stDialog div[data-testid="stTabs"] button[role="tab"]:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 5px 14px rgba(201,37,126,.2);
+            }
+            .stDialog [data-testid="stFormSubmitButton"] button,
+            .stDialog [data-testid="stButton"] button[kind="primary"] {
+                border: 1px solid #ed3b9d !important;
+                border-radius: 999px !important;
+                background: #ed3b9d !important;
+                color: #fff !important;
+                font-weight: 700 !important;
+                box-shadow: 0 5px 14px rgba(201,37,126,.16) !important;
+            }
+            .stDialog [data-testid="stFormSubmitButton"] button:hover,
+            .stDialog [data-testid="stButton"] button[kind="primary"]:hover {
+                border-color: #c9257e !important;
+                background: #c9257e !important;
+                transform: translateY(-1px);
+            }
+            .note-question-heading {
+                margin: .25rem 0 1rem;
+                padding: 18px 20px;
+                border: 1px solid #f4c5df;
+                border-left: 5px solid #ed3b9d;
+                border-radius: 16px;
+                background: linear-gradient(120deg,#fff7fb,#fff0f8);
+            }
+            .note-question-heading span {
+                color: #c9257e;
+                font-size: .68rem;
+                font-weight: 700;
+                letter-spacing: .13em;
+                text-transform: uppercase;
+            }
+            .note-question-heading h3 {
+                margin: 5px 0 0;
+                color: #48243a;
+                font-size: 1.25rem;
+            }
+            @media (max-width: 640px) {
+                .stDialog div[data-testid="stTabs"] > div[role="tablist"] {
+                    flex-wrap: wrap;
+                    border-radius: 18px;
+                }
+                .stDialog div[data-testid="stTabs"] button[role="tab"] {
+                    flex-basis: 100%;
+                }
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
     tab_read, tab_assessment, tab_qa = st.tabs(
         ["📖 Read & Explain", "📝 Assessment", "💬 Talk to Note"]
     )
@@ -261,7 +340,12 @@ def interactive_reader_dialog(note: dict):
         render_assessment_tab(note)
 
     with tab_qa:
-        st.markdown("### Ask Any Question About This Note")
+        st.markdown("""
+            <section class="note-question-heading">
+              <span>SmartClass AI Tutor</span>
+              <h3>Ask Any Question About This Note</h3>
+            </section>
+        """, unsafe_allow_html=True)
         doc_q = st.text_input("Ask AI Tutor about this lecture:", placeholder="e.g. What is the difference between step 2 and step 3?", key=f"doc_q_{note['id']}")
         if st.button("Ask Question", key=f"btn_doc_q_{note['id']}"):
             if doc_q.strip():

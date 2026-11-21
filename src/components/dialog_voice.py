@@ -9,20 +9,46 @@ from src.database.db import create_attendance
 from src.pipelines.voice_pipeline import process_bulk_audio
 
 
-@st.dialog("Voice Attendance")
+@st.dialog("Voice Attendance", width="large")
 def voice_attendance_dialog(selected_subject_id):
     pending_key = f"voice_attendance_results_{selected_subject_id}"
     pending = st.session_state.get(pending_key)
 
     if pending is None:
-        st.write(
-            "Record classroom audio while students say, "
-            "“I am present,” so the AI can identify enrolled voice profiles."
-        )
+        st.markdown("""
+            <style>
+                .voice-attendance-intro {
+                    margin:.2rem 0 1rem;padding:1.1rem 1.25rem;border:1px solid #dce1d6;
+                    border-left:5px solid #829a79;border-radius:16px;
+                    background:linear-gradient(125deg,#e6ecdf,#fffefa);
+                }
+                .voice-attendance-intro .eyebrow {
+                    color:#829a79;font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+                }
+                .voice-attendance-intro h3 { margin:.28rem 0 .35rem!important;color:#385844!important;font-size:1.3rem!important; }
+                .voice-attendance-intro p { margin:0;color:#65746a!important;line-height:1.55; }
+                .voice-recording-card {
+                    padding:1rem;border:1px solid #dce1d6;border-radius:16px;background:#fffefa;
+                }
+            </style>
+            <section class="voice-attendance-intro">
+              <span class="eyebrow">Hands-free check-in</span>
+              <h3>Record the class roll call</h3>
+              <p>Ask students to say “I am present.” SmartClass AI compares the recording with enrolled voice profiles.</p>
+            </section>
+            <div class="voice-recording-card">
+              <strong style="color:#385844">Before you record</strong>
+              <p style="margin:.35rem 0 0;color:#65746a;line-height:1.5">Keep the microphone near the class, reduce background noise, and leave a short pause between names.</p>
+            </div>
+        """, unsafe_allow_html=True)
         audio_data = st.audio_input("Record classroom audio")
+        if audio_data:
+            st.success("Recording ready to analyze.")
+        else:
+            st.caption("Your recording stays in this attendance flow until you analyze or close the dialog.")
 
         if st.button(
-            "Analyze Audio",
+            "Analyze voice attendance",
             width="stretch",
             type="primary",
             key=f"analyze_voice_audio_{selected_subject_id}",
@@ -101,8 +127,34 @@ def voice_attendance_dialog(selected_subject_id):
             st.rerun()
         return
 
-    st.write("Review attendance before confirming.")
-    st.dataframe(pd.DataFrame(pending["results"]), hide_index=True, width="stretch")
+    st.markdown("""
+        <style>
+            .voice-attendance-intro {
+                margin:.2rem 0 1rem;padding:1.1rem 1.25rem;border:1px solid #dce1d6;
+                border-left:5px solid #829a79;border-radius:16px;
+                background:linear-gradient(125deg,#e6ecdf,#fffefa);
+            }
+            .voice-attendance-intro .eyebrow {
+                color:#829a79;font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+            }
+            .voice-attendance-intro h3 { margin:.28rem 0 .35rem!important;color:#385844!important;font-size:1.3rem!important; }
+            .voice-attendance-intro p { margin:0;color:#65746a!important;line-height:1.55; }
+        </style>
+        <section class="voice-attendance-intro">
+          <span class="eyebrow">Review before saving</span>
+          <h3>Voice match results</h3>
+          <p>Check the detected attendance below, then confirm to save it to the class record.</p>
+        </section>
+    """, unsafe_allow_html=True)
+    present_count = sum(bool(row["is_present"]) for row in pending["logs"])
+    total_count = len(pending["logs"])
+    metric_cols = st.columns(2)
+    with metric_cols[0]:
+        st.metric("Voice matches", present_count)
+    with metric_cols[1]:
+        st.metric("No voice match", max(0, total_count - present_count))
+    with st.container(border=True):
+        st.dataframe(pd.DataFrame(pending["results"]), hide_index=True, width="stretch")
     save_col, discard_col = st.columns(2)
 
     with save_col:

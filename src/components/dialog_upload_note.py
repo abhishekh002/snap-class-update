@@ -23,6 +23,14 @@ def upload_note_dialog():
         st.warning("You must create at least one subject before uploading notes.")
         return
 
+    st.markdown("""
+        <div style="margin:.25rem 0 1rem;padding:1rem 1.1rem;border:1px solid #dce1d6;
+                    border-left:4px solid #829a79;border-radius:14px;
+                    background:linear-gradient(125deg,#e6ecdf,#fffefa);color:#526457;line-height:1.55;">
+          Choose a class, give the material a clear title, and add a short summary so students know what it covers.
+        </div>
+    """, unsafe_allow_html=True)
+
     subject_options = {f"{s['name']} ({s['subject_code']})": s for s in subjects}
     selected_label = st.selectbox("Select Subject", list(subject_options.keys()))
     selected_subject = subject_options[selected_label]
@@ -45,7 +53,7 @@ def upload_note_dialog():
             st.rerun()
 
     with col2:
-        if st.button("Upload Note", type="primary", width="stretch"):
+        if st.button("Upload Course Notes", type="primary", width="stretch"):
             if not title.strip():
                 st.error("Please enter a title for the note.")
                 return

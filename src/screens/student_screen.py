@@ -1,4 +1,6 @@
 
+from html import escape
+
 from src.database.notes_db import get_note_download, get_notes_for_student
 from src.components.dialog_ai_chat import ai_chat_dialog
 from src.components.dialog_interactive_reader import interactive_reader_dialog
@@ -12,7 +14,7 @@ from PIL import Image
 from supabase import PostgrestAPIError as APIError
 
 from src.components.footer import footer_dashboard
-from src.components.header import header_dashboard
+from src.components.header import LOGO_DATA_URI
 from src.database.db import (
     create_student,
     enroll_student_to_subject,
@@ -42,41 +44,233 @@ def student_dashboard():
         return
     student_id = student_data["student_id"]
 
-    c1, c2 = st.columns(2, vertical_alignment="center", gap="large")
-    with c1:
-        header_dashboard()
-    with c2:
-        st.subheader(f"Good to see you, {student_data['name']}!")
-        b1, b2 = st.columns(2)
-        with b1:
-            if st.button("🤖 Ask AI Tutor", key="student_top_ai_btn", icon=":material/smart_toy:", width="stretch"):
-                ai_chat_dialog()
-        with b2:
-            if st.button("Logout", type="secondary", key="loginbackbtn", width="stretch"):
-                st.session_state["is_logged_in"] = False
-                st.session_state["user_role"] = None
-                st.session_state.pop("student_data", None)
-                st.rerun()
+    student_name = escape(str(student_data.get("name") or "Student"))
+    student_registration = escape(
+        str(student_data.get("registration_number") or "Pending setup")
+    )
+    logo_column, home_column = st.columns([3, 1], vertical_alignment="center")
+    with logo_column:
+        st.markdown(f"""
+            <div style="display:flex; align-items:center; min-height:74px;">
+              <img src="{LOGO_DATA_URI}" alt="SmartClass AI"
+                style="display:block; width:min(360px,100%); height:auto;" />
+            </div>
+        """, unsafe_allow_html=True)
+    with home_column:
+        if st.button("Back to Home", type="secondary", key="loginbackbtn", width="stretch", icon=":material/home:"):
+            st.session_state["is_logged_in"] = False
+            st.session_state["user_role"] = None
+            st.session_state.pop("student_data", None)
+            st.rerun()
 
+    st.markdown("""
+        <style>
+            .st-key-student_learning_journey {
+                box-sizing: border-box;
+                width: 100%;
+                margin: 0 0 1rem;
+                padding: 24px 28px 18px;
+                border: 1px solid #31545b;
+                border-radius: 22px;
+                background: linear-gradient(130deg,#203a43,#315b54 72%,#3c6658);
+                box-shadow: 0 14px 30px rgba(32,58,67,.18);
+            }
+            .st-key-student_learning_journey [data-testid="stMarkdownContainer"] p {
+                color: #e1ebe3 !important;
+            }
+            .st-key-student_top_ai_btn button {
+                background: #d8ef9b !important;
+                border-color: #d8ef9b !important;
+                color: #203a43 !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    with st.container(key="student_learning_journey"):
+        st.markdown(f"""
+            <div style="color:#d8ef9b; font-size:.68rem; font-weight:700;
+                letter-spacing:.15em;">YOUR LEARNING JOURNEY</div>
+            <div style="margin:10px 0 4px; color:#fffefa; font-size:1.8rem;
+                font-weight:700; line-height:1.2;">{student_name}</div>
+            <div style="display:inline-block;margin:4px 0 10px;padding:5px 10px;
+                border:1px solid #d8ef9b66;border-radius:999px;
+                background:#ffffff14;color:#e7f4c4;font-size:.78rem;">
+                Registration No. {student_registration}</div>
+            <div style="margin:0 0 7px; color:#d8ef9b; font-size:1.05rem;
+                font-weight:650; line-height:1.3;">A space to learn and grow</div>
+            <p style="margin:0; color:#e1ebe3; font-size:.96rem; line-height:1.55;">
+                Pick up where you left off and keep moving forward.</p>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:16px;">
+              <span style="padding:7px 12px; border-radius:999px; background:#ffffff18;
+                  color:#fffefa; font-size:.78rem;">My classes</span>
+              <span style="padding:7px 12px; border-radius:999px; background:#ffffff18;
+                  color:#fffefa; font-size:.78rem;">Assessments</span>
+              <span style="padding:7px 12px; border-radius:999px; background:#ffffff18;
+                  color:#fffefa; font-size:.78rem;">Study tools</span>
+            </div>
+        """, unsafe_allow_html=True)
+        _, ai_corner = st.columns([5, 1.35])
+        with ai_corner:
+            if st.button(
+                "Ask AI Tutor",
+                key="student_top_ai_btn",
+                icon=":material/auto_awesome:",
+                type="primary",
+                width="stretch",
+            ):
+                ai_chat_dialog()
     try:
         student_notes = get_notes_for_student(student_id)
     except (APIError, PermissionError, RuntimeError) as error:
         st.error(f"Could not load course notes: {error}")
         student_notes = []
-    subjects_tab, assessments_tab, learning_hub_tab = st.tabs(
-        ["Enrolled Subjects", "Assessments", "Learning Hub"]
-    )
-    with learning_hub_tab:
-        notes_tab, impact_tab, study_buddy_tab, voice_profile_tab = st.tabs(
-            [
-                "Course Notes",
-                "Grade Impact Simulator",
-                "Study Buddy Matcher",
-                "Voice Profile",
-            ]
-        )
+    st.markdown("""
+        <style>
+            div[data-testid="stTabs"] > div[role="tablist"] {
+                display: flex;
+                flex-wrap: wrap;
+                gap: .4rem;
+                padding: .45rem;
+                border: 1px solid #dce1d6;
+                border-radius: 15px;
+                background: #eef2eb;
+            }
+            div[data-testid="stTabs"] button[role="tab"] {
+                flex: 1 1 145px;
+                min-height: 2.7rem;
+                border: 1px solid transparent;
+                border-radius: 11px;
+                color: #526457;
+                font-size: .88rem;
+                font-weight: 600;
+                transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+            }
+            div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+                border-color: #315b54;
+                background: #315b54;
+                color: #fffefa;
+                box-shadow: 0 4px 11px rgba(32,58,67,.13);
+            }
+            div[data-testid="stTabs"] button[role="tab"]:focus-visible {
+                outline: 3px solid #bd7654;
+                outline-offset: 2px;
+            }
+            .student-assessment-heading {
+                margin: .25rem 0 1rem;
+                padding: 18px 22px;
+                border: 1px solid #dce1d6;
+                border-left: 5px solid #bd7654;
+                border-radius: 16px;
+                background: linear-gradient(120deg,#fffefa,#f7eee8);
+                box-shadow: 0 7px 20px rgba(32,58,67,.055);
+            }
+            .student-assessment-heading span {
+                color: #bd7654;
+                font-size: .68rem;
+                font-weight: 700;
+                letter-spacing: .14em;
+            }
+            .student-assessment-heading div {
+                margin-top: 5px;
+                color: #26382e;
+                font-size: 1.4rem;
+                font-weight: 700;
+                line-height: 1.25;
+            }
+            [class*="st-key-student_assessment_"] {
+                border-color: #dce1d6 !important;
+                border-radius: 16px !important;
+                background: #fffefa;
+                box-shadow: 0 6px 18px rgba(32,58,67,.045);
+            }
+            @media (max-width: 700px) {
+                div[data-testid="stTabs"] > div[role="tablist"] {
+                    gap: .3rem;
+                    padding: .35rem;
+                }
+                div[data-testid="stTabs"] button[role="tab"] {
+                    flex-basis: 125px;
+                    padding-inline: .45rem;
+                    font-size: .82rem;
+                }
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
-    with voice_profile_tab:
+    main_nav_key = f"student_dashboard_section_{student_id}"
+    if main_nav_key not in st.session_state:
+        st.session_state[main_nav_key] = "subjects"
+    hub_nav_key = f"student_learning_section_{student_id}"
+    if hub_nav_key not in st.session_state:
+        st.session_state[hub_nav_key] = "notes"
+
+    def _student_nav_button(label, section, state_key, active, icon):
+        if st.button(
+            label,
+            key=f"student_nav_{state_key}_{section}_{student_id}",
+            icon=icon,
+            type="primary" if active == section else "tertiary",
+            width="stretch",
+        ):
+            st.session_state[state_key] = section
+            st.rerun()
+
+    nav_subjects, nav_assessments, nav_learning = st.columns(3, gap="small")
+    with nav_subjects:
+        _student_nav_button("Enrolled Subjects", "subjects", main_nav_key, st.session_state[main_nav_key], ":material/menu_book:")
+    with nav_assessments:
+        _student_nav_button("Assessments", "assessments", main_nav_key, st.session_state[main_nav_key], ":material/assignment:")
+    with nav_learning:
+        _student_nav_button("Learning Hub", "learning", main_nav_key, st.session_state[main_nav_key], ":material/auto_stories:")
+
+    if st.session_state[main_nav_key] == "learning":
+        learning_subject_nodes = get_students_subjects(student_id)
+        learning_logs = get_student_attendance(student_id)
+        learning_stats = {}
+        for attendance_log in learning_logs:
+            subject_id = attendance_log.get(
+                "subject_id", attendance_log.get("subjects_id")
+            )
+            if subject_id is None:
+                continue
+            stats = learning_stats.setdefault(
+                str(subject_id), {"total": 0, "attended": 0}
+            )
+            stats["total"] += 1
+            if attendance_log.get("is_present"):
+                stats["attended"] += 1
+        subjects_stats_list = []
+        enrolled_subjects_data = []
+        for subject_node in learning_subject_nodes:
+            subject = subject_node.get("subjects")
+            if not subject:
+                continue
+            subject_stats = learning_stats.get(
+                str(subject["subject_id"]), {"total": 0, "attended": 0}
+            )
+            subjects_stats_list.append({
+                "subject_id": subject["subject_id"],
+                "name": subject["name"],
+                "code": subject["subject_code"],
+                "section": subject.get("section", ""),
+                "total": subject_stats["total"],
+                "attended": subject_stats["attended"],
+            })
+            enrolled_subjects_data.append(subject)
+
+        learning_nav = st.columns(4, gap="small")
+        for column, (label, section, icon) in zip(
+            learning_nav,
+            [
+                ("Course Notes", "notes", ":material/description:"),
+                ("Grade Impact Simulator", "impact", ":material/monitoring:"),
+                ("Study Buddy Matcher", "buddy", ":material/group:"),
+                ("Voice Profile", "voice", ":material/graphic_eq:"),
+            ],
+        ):
+            with column:
+                _student_nav_button(label, section, hub_nav_key, st.session_state[hub_nav_key], icon)
+
+    if st.session_state[main_nav_key] == "learning" and st.session_state[hub_nav_key] == "voice":
         st.subheader(
             "Set up voice attendance"
             if not student_data.get("voice_embedding")
@@ -113,8 +307,13 @@ def student_dashboard():
                 except (RuntimeError, ValueError) as error:
                     st.error(f"Could not process the recording: {error}")
 
-    with assessments_tab:
-        st.subheader("📝 Assessments for Your Subjects")
+    if st.session_state[main_nav_key] == "assessments":
+        st.markdown("""
+            <section class="student-assessment-heading">
+              <span>CHECK YOUR PROGRESS</span>
+              <div>Assessments for Your Subjects</div>
+            </section>
+        """, unsafe_allow_html=True)
         try:
             assessments = get_student_dashboard_assessments(
                 student_id, student_notes
@@ -149,7 +348,10 @@ def student_dashboard():
 
                 notes_by_id = {str(note["id"]): note for note in student_notes}
                 for assessment in assessments:
-                    with st.container(border=True):
+                    with st.container(
+                        key=f"student_assessment_{assessment['id']}",
+                        border=True,
+                    ):
                         st.markdown(f"**{assessment['title']}**")
                         st.caption(
                             f"{assessment['subject_name']} · "
@@ -169,14 +371,32 @@ def student_dashboard():
                                 "Open this subject's course notes to access the assessment."
                             )
 
-    with subjects_tab:
-        enroll_col, _ = st.columns(2)
-        with enroll_col:
-            st.subheader("Your enrolled subjects")
-            if st.button("Enroll in a subject", type="primary", width="stretch"):
+    if st.session_state[main_nav_key] == "subjects":
+        subject_heading, enroll_action = st.columns([3, 1], vertical_alignment="center")
+        with subject_heading:
+            st.markdown("""
+                <section style="padding:18px 22px; border:1px solid #dce1d6;
+                    border-left:5px solid #315b54; border-radius:16px;
+                    background:linear-gradient(120deg,#fffefa,#eef3eb);
+                    box-shadow:0 7px 20px rgba(32,58,67,.055);">
+                  <span style="color:#bd7654; font-size:.68rem; font-weight:700;
+                    letter-spacing:.14em;">YOUR LEARNING SPACE</span>
+                  <div style="margin:5px 0 3px; color:#26382e; font-size:1.45rem;
+                    font-weight:700; line-height:1.25;">Your enrolled subjects</div>
+                  <p style="margin:0; color:#65746a; font-size:.9rem;">
+                    Open a class to check your attendance and course details.</p>
+                </section>
+            """, unsafe_allow_html=True)
+        with enroll_action:
+            if st.button(
+                "Quick Enrollment",
+                type="primary",
+                width="stretch",
+                icon=":material/add_circle:",
+            ):
                 enroll_dialog()
 
-        st.divider()
+        st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
         with st.spinner("Loading your enrolled subjects..."):
             subjects = get_students_subjects(student_id)
             logs = get_student_attendance(student_id)
@@ -248,23 +468,49 @@ def student_dashboard():
                     footer_callback=unenroll_button,
                 )
 
-    with impact_tab:
+    if st.session_state[main_nav_key] == "learning" and st.session_state[hub_nav_key] == "impact":
         if subjects_stats_list:
             render_gpa_forecaster(subjects_stats_list)
         else:
             st.info("Enroll in a subject to use the attendance simulator.")
 
-    with study_buddy_tab:
+    if st.session_state[main_nav_key] == "learning" and st.session_state[hub_nav_key] == "buddy":
         if enrolled_subjects_data:
             render_study_buddy_matcher(enrolled_subjects_data, student_id)
         else:
             st.info("Enroll in a subject to find study partners.")
 
-    with notes_tab:
-        c_nhdr, c_nai = st.columns([2, 1], vertical_alignment="center")
-        with c_nhdr:
-            st.subheader("📚 Course Notes & Study Materials")
-            st.caption("Materials uploaded by your teachers for your enrolled subjects.")
+    if st.session_state[main_nav_key] == "learning" and st.session_state[hub_nav_key] == "notes":
+        st.markdown("""
+            <style>
+                .student-notes-intro {
+                    margin: .25rem 0 1rem; padding: 1.15rem 1.35rem;
+                    border: 1px solid #dce1d6; border-left: 5px solid #829a79;
+                    border-radius: 16px; background: #fffefa;
+                    box-shadow: 0 8px 24px rgba(48,66,51,.045);
+                }
+                .student-notes-intro span {
+                    color: #829a79; font-size: .7rem; font-weight: 700;
+                    letter-spacing: .13em; text-transform: uppercase;
+                }
+                .student-notes-intro h2 {
+                    margin: .3rem 0 .35rem; color: #385844;
+                    font-size: clamp(1.45rem,2.8vw,2rem); line-height: 1.2;
+                }
+                .student-notes-intro p { margin: 0; color: #65746a; line-height: 1.55; }
+                [class*="st-key-student_note_"] {
+                    border-color: #dce1d6 !important; border-radius: 16px !important;
+                    background: #fffefa; box-shadow: 0 7px 20px rgba(48,66,51,.05);
+                }
+                .st-key-student_notes_ai_btn button { min-height: 3rem; white-space: nowrap; }
+            </style>
+            <section class="student-notes-intro">
+              <span>Learning resources</span>
+              <h2>Course Notes &amp; Study Materials</h2>
+              <p>Explore notes and study guides shared by your teachers for your enrolled subjects.</p>
+            </section>
+        """, unsafe_allow_html=True)
+        _, c_nai = st.columns([3, 1])
         with c_nai:
             if st.button("🤖 Ask AI Tutor", icon=":material/smart_toy:", key="student_notes_ai_btn", width="stretch"):
                 ai_chat_dialog()
@@ -279,7 +525,7 @@ def student_dashboard():
             for s_name, s_notes in notes_by_subject.items():
                 st.markdown(f"#### 📖 {s_name}")
                 for note in s_notes:
-                    with st.container(border=True):
+                    with st.container(key=f"student_note_{note['id']}", border=True):
                         c_ntext, c_nactions = st.columns([3, 1])
                         with c_ntext:
                             st.markdown(f"**{note['title']}**")
@@ -311,9 +557,15 @@ def student_screen():
         student_dashboard()
         return
 
-    col1, col2 = st.columns(2, vertical_alignment="center", gap="large")
+    col1, col2 = st.columns([3, 1], vertical_alignment="center", gap="large")
     with col1:
-        header_dashboard()
+        st.markdown(f"""
+            <div style="display:flex;align-items:center;justify-content:flex-start;
+                min-height:74px;width:100%;">
+              <img src="{LOGO_DATA_URI}" alt="SmartClass AI"
+                style="display:block;width:min(380px,100%);height:auto;margin:0;" />
+            </div>
+        """, unsafe_allow_html=True)
     with col2:
         if st.button(
             "Back to Home",
@@ -323,12 +575,61 @@ def student_screen():
             st.session_state["login_type"] = None
             st.rerun()
 
-    st.header("Sign in with Face ID", text_alignment="center")
-    st.space()
-    st.space()
+    st.markdown("""
+        <style>
+            .face-login-hero {
+                margin: 1rem 0 1.2rem;
+                padding: 1.45rem 1.6rem;
+                border: 1px solid #dce1d6;
+                border-radius: 22px;
+                background: linear-gradient(125deg, #e6ecdf, #dbe6d5 62%, #e8eadc);
+                box-shadow: 0 12px 30px rgba(48,66,51,.07);
+                text-align: center;
+            }
+            .face-login-hero .eyebrow {
+                color: #829a79;
+                font-size: .7rem;
+                font-weight: 700;
+                letter-spacing: .14em;
+                text-transform: uppercase;
+            }
+            .face-login-hero h1 {
+                margin: .35rem 0 .4rem;
+                color: #26382e;
+                font-size: clamp(1.65rem, 3.5vw, 2.35rem);
+                line-height: 1.15;
+            }
+            .face-login-hero p {
+                margin: 0;
+                color: #526457;
+                line-height: 1.55;
+            }
+            .st-key-face-login-camera {
+                max-width: 720px;
+                margin: 0 auto;
+                padding: 1rem 1.25rem .65rem;
+                border: 1px solid #dce1d6;
+                border-radius: 18px;
+                background: #fffefa;
+                box-shadow: 0 8px 24px rgba(48,66,51,.055);
+            }
+            @media (max-width: 640px) {
+                .face-login-hero { padding: 1.15rem; }
+                .st-key-face-login-camera { padding: .8rem; }
+            }
+        </style>
+        <section class="face-login-hero">
+          <span class="eyebrow">Student access</span>
+          <h1>Sign in with Face ID</h1>
+          <p>Center your face in the camera to securely open your student workspace.</p>
+        </section>
+    """, unsafe_allow_html=True)
 
     show_registration = False
-    photo = st.camera_input("Position your face in the center")
+    with st.container(key="face-login-camera"):
+        st.markdown("**Ready when you are**")
+        st.caption("Allow camera access, look toward the camera, then capture a clear photo.")
+        photo = st.camera_input("Position your face in the center")
 
     if photo is not None:
         image = np.array(Image.open(photo))
@@ -369,22 +670,56 @@ def student_screen():
             show_registration = True
 
     if show_registration:
-        with st.container(border=True):
-            st.header("Register a New Profile")
+        st.markdown("""
+            <style>
+                .st-key-student_registration_panel {
+                    border-color: #d5e1d9 !important;
+                    border-radius: 20px !important;
+                    background: #fffefa;
+                    box-shadow: 0 12px 28px rgba(32,58,67,.08);
+                }
+                .st-key-student_voice_enrollment {
+                    margin: 1rem 0 .5rem;
+                    border-color: #dce1d6 !important;
+                    border-radius: 15px !important;
+                    background: #f6f7f1;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+        with st.container(key="student_registration_panel", border=True):
+            st.markdown("""
+                <section style="margin-bottom:1rem;padding:18px 20px;
+                    border:1px solid #31545b;border-radius:16px;
+                    background:linear-gradient(128deg,#203a43,#315b54 72%,#3c6658);">
+                  <span style="color:#d8ef9b;font-size:.68rem;font-weight:700;
+                    letter-spacing:.14em;text-transform:uppercase;">Student access</span>
+                  <h2 style="margin:5px 0 3px;color:#fffefa;font-size:1.45rem;">
+                    Register a New Profile</h2>
+                  <p style="margin:0;color:#e1ebe3;">Add your details and face profile to create your account.</p>
+                </section>
+            """, unsafe_allow_html=True)
             new_name = st.text_input(
                 "Enter your name",
                 placeholder="E.g. Abhishekh Tiwari",
             )
-
-            st.subheader("Optional: Voice Enrollment")
-            st.info("Enroll your voice for voice-only attendance.")
-            audio_data = st.audio_input(
-                "Record a short phrase, such as “I am present. My name is ...”"
+            registration_number = st.text_input(
+                "Registration number",
+                placeholder="For example, 2307060023",
+                key="student_registration_number",
             )
+
+            with st.container(key="student_voice_enrollment", border=True):
+                st.subheader("Optional: Voice Enrollment")
+                st.caption("Enroll your voice for voice-only attendance. You can skip this for now.")
+                audio_data = st.audio_input(
+                    "Record a short phrase for voice-only attendance"
+                )
 
             if st.button("Create Account", type="primary"):
                 if not new_name.strip():
                     st.warning("Please enter your name.")
+                elif not registration_number.strip():
+                    st.warning("Please enter your registration number.")
                 elif photo is None:
                     st.error("Please capture your face before registering.")
                 else:
@@ -404,6 +739,7 @@ def student_screen():
                             )
                             response_data = create_student(
                                 new_name.strip(),
+                                registration_number=registration_number.strip(),
                                 face_embedding=face_embedding,
                                 voice_embedding=voice_embedding,
                             )
@@ -413,7 +749,10 @@ def student_screen():
                                 st.session_state.is_logged_in = True
                                 st.session_state.user_role = "student"
                                 st.session_state.student_data = response_data[0]
-                                st.toast(f"Profile created! Hi, {new_name.strip()}!")
+                                st.toast(
+                                    "Profile created! Registration number: "
+                                    f"{registration_number.strip()}"
+                                )
                                 st.rerun()
                             else:
                                 st.error("Could not create the student profile.")

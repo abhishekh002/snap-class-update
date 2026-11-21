@@ -22,7 +22,7 @@
   @keyframes tag{0%,40%{opacity:0;transform:translateX(-14px)}54%,100%{opacity:1;transform:translateX(0)}}
 </style>
 <defs>
-  <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22DAFF" /><stop offset="1" stop-color="#22DAFF" /></linearGradient>
+  <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#829A79" /><stop offset="1" stop-color="#B97453" /></linearGradient>
   <linearGradient id="s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0" /><stop offset=".5" stop-color="#fff" /><stop offset="1" stop-color="#fff" stop-opacity="0" /></linearGradient>
   <clipPath id="c"><rect x="10" y="10" width="160" height="160" rx="44" /></clipPath>
 </defs>

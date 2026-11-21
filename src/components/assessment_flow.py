@@ -1,4 +1,5 @@
 from datetime import date
+from html import escape
 
 import streamlit as st
 from postgrest.exceptions import APIError
@@ -24,6 +25,50 @@ from src.database.assessments_db import (
 ASSESSMENT_FILE_TYPES = sorted(ALLOWED_FILE_TYPES)
 
 
+def _assessment_intro(title: str, description: str, eyebrow: str) -> None:
+    st.markdown(f"""
+        <style>
+            .assessment-intro {{
+                margin: .25rem 0 1rem;
+                padding: 1rem 1.1rem;
+                border: 1px solid #f4c5df;
+                border-left: 5px solid #ed3b9d;
+                border-radius: 16px;
+                background: linear-gradient(125deg, #fff0f8, #fffefa);
+            }}
+            .assessment-intro .eyebrow {{
+                color: #c9257e;
+                font-size: .68rem;
+                font-weight: 700;
+                letter-spacing: .13em;
+                text-transform: uppercase;
+            }}
+            .assessment-intro h3 {{
+                margin: .25rem 0 !important;
+                color: #48243a !important;
+                font-size: 1.25rem !important;
+            }}
+            .assessment-intro p {{ margin: 0; color: #65746a !important; line-height: 1.5; }}
+            [data-testid="stForm"] {{
+                padding: 1rem;
+                border: 1px solid #dce1d6;
+                border-radius: 16px;
+                background: #fffefa;
+            }}
+            [data-testid="stExpander"] {{
+                border-color: #dce1d6;
+                border-radius: 14px;
+                background: #fffefa;
+            }}
+        </style>
+        <section class="assessment-intro">
+          <span class="eyebrow">{escape(eyebrow)}</span>
+          <h3>{escape(title)}</h3>
+          <p>{escape(description)}</p>
+        </section>
+    """, unsafe_allow_html=True)
+
+
 def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
     teacher_id = teacher.get("teacher_id") or teacher.get("id")
     if teacher_id is None:
@@ -33,8 +78,11 @@ def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
         st.error("You can only publish assessments for your own notes.")
         return
 
-    st.markdown("### Create an assessment for this note")
-    st.caption("Students enrolled in this subject will see the assessment here.")
+    _assessment_intro(
+        "Create an assessment for this note",
+        "Students enrolled in this subject will see the assessment here.",
+        "New assignment",
+    )
     with st.form(f"create_assessment_{note['id']}"):
         title = st.text_input("Assessment title *")
         instructions = st.text_area("Assessment questions and instructions *")
@@ -111,6 +159,13 @@ def _teacher_assessment_tab(note: dict, teacher: dict) -> None:
     except (APIError, PermissionError, RuntimeError) as error:
         st.error(f"Could not load assessments: {error}")
         return
+
+    if assessments:
+        _assessment_intro(
+            "Published assessments",
+            "Review student submissions, save grades, and release results when ready.",
+            "Class work",
+        )
 
     for assessment in assessments:
         with st.container(border=True):
@@ -299,6 +354,12 @@ def _student_assessment_tab(note: dict, student: dict) -> None:
     if student_id is None:
         st.error("Your student account is missing an ID. Please log in again.")
         return
+
+    _assessment_intro(
+        "Assessments for this note",
+        "Review instructions and due dates, then submit your work here.",
+        "Your class work",
+    )
 
     try:
         assessments = get_student_assessments(

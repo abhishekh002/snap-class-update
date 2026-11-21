@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 144" role="img" aria-labelledby="title desc">
+  <title id="title">SmartClass AI</title>
+  <desc id="desc">Animated SmartClass AI logo with a graduation cap, open book, and learning spark.</desc>
+  <defs>
+    <linearGradient id="badge" x1="12" y1="12" x2="132" y2="132" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#829A79"/>
+      <stop offset="1" stop-color="#385844"/>
+    </linearGradient>
+    <style>
+      .cap { transform-box: fill-box; transform-origin: center; animation: cap-float 3.2s ease-in-out infinite; }
+      .spark { transform-box: fill-box; transform-origin: center; animation: spark-pulse 2.4s ease-in-out infinite; }
+      .ring { transform-box: fill-box; transform-origin: center; animation: ring-pulse 2.4s ease-out infinite; }
+      @keyframes cap-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+      @keyframes spark-pulse { 0%, 100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.18); opacity: 1; } }
+      @keyframes ring-pulse { 0% { transform: scale(.8); opacity: .65; } 100% { transform: scale(1.8); opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .cap, .spark, .ring { animation: none; } }
+    </style>
+  </defs>
+  <rect x="8" y="8" width="128" height="128" rx="34" fill="url(#badge)"/>
+  <circle class="ring" cx="117" cy="30" r="12" fill="none" stroke="#B97453" stroke-width="2"/>
+  <g class="cap">
+    <path d="M29 54 72 35l43 19-43 19-43-19Z" fill="#FFFEFA"/>
+    <path d="M43 68v23c16 12 42 12 58 0V68L72 81 43 68Z" fill="#FFFEFA"/>
+    <path d="M115 55v25" stroke="#FFFEFA" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="115" cy="84" r="5" fill="#B97453"/>
+  </g>
+  <path class="spark" d="m113 20 5 11 12 2-9 8 2 12-10-7-10 7 2-12-9-8 12-2 5-11Z" fill="#B97453"/>
+  <text x="164" y="80" fill="#26382E" font-family="Lora, Georgia, serif" font-size="54" font-weight="700" letter-spacing="-2">SmartClass</text>
+  <text x="480" y="80" fill="#B97453" font-family="DM Sans, Arial, sans-serif" font-size="52" font-weight="700" letter-spacing="-1">AI</text>
+  <text x="168" y="113" fill="#65746A" font-family="DM Sans, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="5">SMART LEARNING · CONNECTED CLASSROOMS</text>
+</svg>

@@ -3,8 +3,9 @@ import streamlit as st
 
 
 def _get_logo_url(is_dark: bool = True) -> str:
-    text_color = "#FFFFFF" if is_dark else "#0F172A"
-    accent_color = "#00F0FF" if is_dark else "#4338CA"
+    # Both home and dashboard use a light, warm surface now.
+    text_color = "#26382E"
+    accent_color = "#B97453"
 
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 40" width="270" height="40" fill="none">
       <defs>
@@ -28,29 +29,19 @@ def _get_logo_url(is_dark: bool = True) -> str:
     return f"data:image/svg+xml;base64,{encoded}"
 
 
-def footer_home():
-    logo_url = _get_logo_url(is_dark=True)
-
+def _render_creator_footer():
+    st.divider()
     st.markdown(
-        f"""
-        <div style="margin-top:2rem; display:flex; gap:8px; justify-content:center; align-items:center;">
-            <p style="font-weight:bold; color:white; margin:0; line-height:25px;"> Created with ❤️ by </p>  
-            <img src="{logo_url}" style="max-height:25px;" alt="Abhishek Kumar Tiwari" />
-        </div>
-        """,
+        "<div style='width:100%;padding:14px 0 8px;background:transparent;"
+        "text-align:center;color:#315b54;font-size:.78rem;font-weight:800;"
+        "letter-spacing:.18em;text-transform:uppercase;'>SmartClass AI</div>",
         unsafe_allow_html=True,
     )
+
+
+def footer_home():
+    _render_creator_footer()
 
 
 def footer_dashboard():
-    logo_url = _get_logo_url(is_dark=False)
-
-    st.markdown(
-        f"""
-        <div style="margin-top:2rem; display:flex; gap:8px; justify-content:center; align-items:center;">
-            <p style="font-weight:bold; color:black; margin:0; line-height:25px;"> Created with ❤️ by </p>  
-            <img src="{logo_url}" style="max-height:25px;" alt="Abhishek Kumar Tiwari" />
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    _render_creator_footer()

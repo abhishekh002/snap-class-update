@@ -1,5 +1,6 @@
 
 import time
+from html import escape
 from src.database.notes_db import get_note_download, get_notes_for_teacher, delete_note
 from src.components.dialog_upload_note import upload_note_dialog
 from src.components.dialog_blackboard_digitizer import blackboard_digitizer_dialog
@@ -16,7 +17,7 @@ from src.components.footer import footer_dashboard
 from src.components.dialog_create_subject import create_subject_dialog
 from src.ui.base_layout import style_background_dashboard, style_base_layout
 
-from src.components.header import header_dashboard
+from src.components.header import LOGO_DATA_URI, header_dashboard
 
 from src.database.db import (
     check_teacher_exists,
@@ -165,9 +166,51 @@ def teacher_dashboard():
         st.session_state.current_teacher_tab = current_tab
 
     header_dashboard()
+    st.markdown("""
+        <style>
+            .teacher-welcome {
+                margin: .8rem 0 1.15rem;
+                padding: 1.45rem 1.7rem;
+                border: 1px solid #dce1d6;
+                border-radius: 22px;
+                background: linear-gradient(125deg, #e6ecdf, #dbe6d5 62%, #e8eadc);
+                box-shadow: 0 12px 30px rgba(48,66,51,.07);
+            }
+            .teacher-welcome .eyebrow {
+                color: #65746a;
+                font-size: .72rem;
+                font-weight: 700;
+                letter-spacing: .14em;
+                text-transform: uppercase;
+            }
+            .teacher-welcome h1 {
+                margin: .4rem 0 .35rem !important;
+                color: #26382e !important;
+                font-size: clamp(1.8rem, 3.6vw, 2.7rem) !important;
+                line-height: 1.12 !important;
+            }
+            .teacher-welcome p {
+                margin: 0;
+                color: #526457 !important;
+                line-height: 1.55;
+            }
+            @media (max-width: 640px) {
+                .teacher-welcome { padding: 1.15rem; }
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    teacher_name = escape(str(teacher.get("name") or "Teacher"))
+    st.markdown(f"""
+        <section class="teacher-welcome">
+          <span class="eyebrow">Teacher workspace</span>
+          <h1>Welcome back, {teacher_name}</h1>
+          <p>Take attendance, manage your classes, and keep learning on track.</p>
+        </section>
+    """, unsafe_allow_html=True)
+
     c_w, c_b = st.columns([2, 1], vertical_alignment="center")
     with c_w:
-        st.subheader(f"Welcome, {teacher['name']}")
+        st.caption("Quick actions")
     with c_b:
         btn_ai_col, btn_log_col = st.columns(2)
         with btn_ai_col:
@@ -180,7 +223,39 @@ def teacher_dashboard():
                 st.session_state.pop("current_teacher_tab", None)
                 st.rerun()
 
-    tab1, tab2, tab3, tab4 = st.columns(4)
+    st.markdown("""
+        <style>
+            .st-key-take_attendance button,
+            .st-key-manage_subjects button,
+            .st-key-attendance_records button,
+            .st-key-course_notes button {
+                min-height: 3.15rem;
+                padding: .55rem .65rem !important;
+            }
+            .st-key-take_attendance button p,
+            .st-key-manage_subjects button p,
+            .st-key-attendance_records button p,
+            .st-key-course_notes button p {
+                width: auto !important;
+                max-width: none !important;
+                overflow: visible !important;
+                text-overflow: clip !important;
+                white-space: nowrap !important;
+                font-size: .88rem;
+            }
+            @media (max-width: 760px) {
+                .st-key-take_attendance button p,
+                .st-key-manage_subjects button p,
+                .st-key-attendance_records button p,
+                .st-key-course_notes button p {
+                    white-space: normal !important;
+                    line-height: 1.15;
+                }
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    tab1, tab2, tab3, tab4 = st.columns(4, gap="small")
     with tab1:
         type1 = "primary" if st.session_state.current_teacher_tab == "take_attendance" else 'tertiary'
         if st.button("Take Attendance", width="stretch", type=type1, icon=":material/fact_check:", key="take_attendance"):
@@ -213,21 +288,77 @@ def teacher_dashboard():
     footer_dashboard()
 
 
+def _teacher_section_header(title, description, eyebrow):
+    st.markdown(f"""
+        <style>
+            .teacher-section-intro {{
+                margin: .35rem 0 1.25rem;
+                padding: 1.15rem 1.35rem;
+                border: 1px solid #dce1d6;
+                border-left: 5px solid #829a79;
+                border-radius: 16px;
+                background: #fffefa;
+                box-shadow: 0 8px 24px rgba(48,66,51,.045);
+            }}
+            .teacher-section-intro .eyebrow {{
+                color: #829a79;
+                font-size: .7rem;
+                font-weight: 700;
+                letter-spacing: .13em;
+                text-transform: uppercase;
+            }}
+            .teacher-section-intro h2 {{
+                margin: .3rem 0 .35rem !important;
+                color: #385844 !important;
+                font-size: clamp(1.45rem, 2.8vw, 2rem) !important;
+                line-height: 1.2 !important;
+            }}
+            .teacher-section-intro p {{
+                margin: 0;
+                color: #65746a !important;
+                line-height: 1.55;
+            }}
+        </style>
+        <section class="teacher-section-intro">
+          <span class="eyebrow">{escape(str(eyebrow))}</span>
+          <h2>{escape(str(title))}</h2>
+          <p>{escape(str(description))}</p>
+        </section>
+    """, unsafe_allow_html=True)
+
+
 def teacher_tab_course_notes():
     teacher_id = st.session_state.teacher_data.get("teacher_id", st.session_state.teacher_data.get("id"))
-    st.header("Course Notes & Materials")
-    st.write("Upload notes and study guides for your classes. Enrolled students will have immediate access.")
+    _teacher_section_header(
+        "Course Notes & Materials",
+        "Upload notes and study guides for your classes. Enrolled students can access them here.",
+        "Learning resources",
+    )
+    st.markdown("""
+        <style>
+            .st-key-btn_upload_note_modal button,
+            .st-key-btn_bb_digitize button,
+            .st-key-btn_teacher_notes_ai button {
+                min-height: 3.35rem;
+                white-space: normal;
+                line-height: 1.25;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
     col_up, col_bb, col_ai = st.columns([1, 1, 1])
     with col_up:
-        if st.button("➕ Upload Note", type="primary", icon=":material/upload_file:", key="btn_upload_note_modal", width="stretch"):
+        if st.button("Upload Course Notes", type="primary", icon=":material/upload_file:", key="btn_upload_note_modal", width="stretch"):
             upload_note_dialog()
+        st.caption("Share PDFs, slides, and study guides with your class.")
     with col_bb:
-        if st.button("📷 Blackboard to Notes", icon=":material/photo_camera:", key="btn_bb_digitize", width="stretch", help="Transcribe chalkboard/whiteboard into LaTeX & Markdown"):
+        if st.button("Blackboard-to-Notes Auto-Digitizer", icon=":material/photo_camera:", key="btn_bb_digitize", width="stretch", help="Turn a classroom board photo into structured notes."):
             blackboard_digitizer_dialog()
+        st.caption("Turn board photos into shareable notes.")
     with col_ai:
-        if st.button("🤖 AI Assistant", icon=":material/smart_toy:", key="btn_teacher_notes_ai", width="stretch"):
+        if st.button("SmartClass AI Tutor & Assistant", icon=":material/auto_awesome:", key="btn_teacher_notes_ai", width="stretch"):
             ai_chat_dialog()
+        st.caption("Explain topics and answer study questions.")
 
     st.divider()
     try:
@@ -236,7 +367,7 @@ def teacher_tab_course_notes():
         st.error(f"Could not load course notes: {error}")
         return
     if not notes:
-        st.info("You haven't uploaded any notes yet. Click 'Upload Note' or 'Blackboard to Notes' above to get started.")
+        st.info("You haven't uploaded any notes yet. Use Upload Course Notes or Blackboard-to-Notes Auto-Digitizer above to get started.")
         return
 
     subjects_map = {}
@@ -296,7 +427,11 @@ def teacher_tab_course_notes():
 
 def teacher_tab_take_attendance():
     teacher_id = st.session_state.teacher_data['teacher_id']
-    st.header('Take Attendance with AI')
+    _teacher_section_header(
+        "Take Attendance with AI",
+        "Choose a class, add classroom photos, and review the AI attendance results.",
+        "Smart attendance",
+    )
 
     if 'attendance_images' not in st.session_state:
         st.session_state.attendance_images = []
@@ -483,9 +618,12 @@ def teacher_tab_take_attendance():
 
 def teacher_tab_manage_subjects():
     teacher_id = st.session_state.teacher_data["teacher_id"]
-    heading_col, create_col = st.columns(2)
-    with heading_col:
-        st.header('Manage Subjects', width='stretch')
+    _teacher_section_header(
+        "Manage Subjects",
+        "Organize your classes, share enrollment codes, and track class activity.",
+        "Class setup",
+    )
+    _, create_col = st.columns([3, 1])
     with create_col:
         if st.button('Create New Subject', width='stretch'):
             create_subject_dialog(teacher_id)
@@ -532,7 +670,11 @@ def teacher_tab_manage_subjects():
     else:
         st.info("No subjects found. Create one above.")
 def teacher_tab_attendance_records():
-    st.header("Attendance Records")
+    _teacher_section_header(
+        "Attendance Records",
+        "Review attendance by class and session, including present and absent counts.",
+        "Class insights",
+    )
 
     teacher_id = st.session_state.teacher_data["teacher_id"]
     try:
@@ -561,7 +703,7 @@ def teacher_tab_attendance_records():
 
         rows.append(
             {
-                "ts_group": logged_time.isoformat() if logged_time else logged_at,
+                "ts_group": logged_time.isoformat() if logged_time else str(logged_at or "N/A"),
                 "Time": (
                     logged_time.strftime("%Y-%m-%d %I:%M %p")
                     if logged_time
@@ -569,6 +711,16 @@ def teacher_tab_attendance_records():
                 ),
                 "Subject": subject.get("name", "Unknown"),
                 "Subject Code": subject.get("subject_code", "N/A"),
+                "Student": (
+                    record.get("students", {}).get("name", "Student")
+                    if isinstance(record.get("students"), dict)
+                    else "Student"
+                ),
+                "Registration Number": (
+                    record.get("students", {}).get("registration_number") or "N/A"
+                    if isinstance(record.get("students"), dict)
+                    else "N/A"
+                ),
                 "is_present": bool(record.get("is_present", False)),
             }
         )
@@ -589,18 +741,135 @@ def teacher_tab_attendance_records():
         )
         .reset_index()
     )
-    summary["Attendance Stats"] = (
-        "✅ "
-        + summary["Present_Count"].astype(str)
-        + " / "
-        + summary["Total_Count"].astype(str)
-        + " Students"
-    )
-    st.dataframe(
-        summary[["Time", "Subject", "Subject Code", "Attendance Stats"]],
-        hide_index=True,
-        width="stretch",
-    )
+    session_options = {}
+    for index, session in summary.reset_index(drop=True).iterrows():
+        label = (
+            f"{session['Time']} - {session['Subject']} | "
+            f"{session['Subject Code']} | Session {index + 1}"
+        )
+        session_options[label] = (session["ts_group"], session["Subject Code"])
+
+    with st.container(border=True):
+        st.markdown("#### View student attendance")
+        st.caption("Choose a session to see each student's attendance result.")
+        selected_session_label = st.selectbox(
+            "Attendance session",
+            list(session_options),
+            key=f"attendance_detail_picker_{teacher_id}",
+        )
+        show_detail = st.button(
+            "Show attendance",
+            icon=":material/visibility:",
+            type="secondary",
+            width="stretch",
+            key=f"show_attendance_detail_{teacher_id}",
+        )
+        detail_state_key = f"selected_attendance_detail_{teacher_id}"
+        if show_detail:
+            st.session_state[detail_state_key] = selected_session_label
+
+    if st.session_state.get(detail_state_key) == selected_session_label:
+        session_time, session_code = session_options[selected_session_label]
+        detail_rows = records_df[
+            (records_df["ts_group"] == session_time)
+            & (records_df["Subject Code"] == session_code)
+        ]
+        st.markdown("""
+            <style>
+                .attendance-detail-heading {
+                    margin: 1.35rem 0 .9rem;
+                    padding: 1.15rem 1.35rem;
+                    border: 1px solid #dce1d6;
+                    border-left: 5px solid #829a79;
+                    border-radius: 16px;
+                    background: linear-gradient(120deg, #fffefa, #f2f4ec);
+                    box-shadow: 0 8px 22px rgba(48,66,51,.055);
+                }
+                .attendance-detail-heading span {
+                    color: #829a79;
+                    font-size: .7rem;
+                    font-weight: 700;
+                    letter-spacing: .13em;
+                    text-transform: uppercase;
+                }
+                .attendance-detail-heading h3 {
+                    margin: .3rem 0 0;
+                    color: #26382e;
+                    font-size: 1.25rem;
+                    line-height: 1.35;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+        st.markdown(
+            f'<section class="attendance-detail-heading">'
+            f'<span>Session roster</span>'
+            f'<h3>{escape(selected_session_label.rsplit(" | Session ", 1)[0])}</h3>'
+            f'</section>',
+            unsafe_allow_html=True,
+        )
+        present_count = int(detail_rows["is_present"].sum())
+        total_count = len(detail_rows)
+        present_metric, absent_metric, total_metric = st.columns(3)
+        present_metric.metric("Present", present_count)
+        absent_metric.metric("Absent", total_count - present_count)
+        total_metric.metric("Students", total_count)
+
+        detail_table = detail_rows[
+            ["Student", "Registration Number", "is_present"]
+        ].rename(
+            columns={"is_present": "Present"}
+        )
+        detail_table["Present"] = detail_table["Present"].map(
+            {True: "Present", False: "Absent"}
+        )
+        styled_detail_table = (
+            detail_table.style
+            .set_table_styles(
+                [
+                    {
+                        "selector": "table",
+                        "props": [
+                            ("border-collapse", "separate"),
+                            ("border-spacing", "0"),
+                            ("border", "1px solid #dce1d6"),
+                            ("border-radius", "14px"),
+                            ("overflow", "hidden"),
+                        ],
+                    },
+                    {
+                        "selector": "thead th",
+                        "props": [
+                            ("background-color", "#e6ece1"),
+                            ("color", "#385844"),
+                            ("font-weight", "700"),
+                            ("padding", ".8rem 1rem"),
+                            ("border-bottom", "1px solid #dce1d6"),
+                        ],
+                    },
+                    {
+                        "selector": "tbody td",
+                        "props": [
+                            ("color", "#26382e"),
+                            ("padding", ".8rem 1rem"),
+                            ("border-bottom", "1px solid #e8ebe4"),
+                        ],
+                    },
+                    {
+                        "selector": "tbody tr:nth-child(even) td",
+                        "props": [("background-color", "#f8f7f1")],
+                    },
+                ]
+            )
+            .map(
+                lambda value: (
+                    "background-color: #e2eadc; color: #385844; font-weight: 700;"
+                    if value == "Present"
+                    else "background-color: #efe3d7; color: #744b40; font-weight: 700;"
+                ),
+                subset=["Present"],
+            )
+        )
+        st.dataframe(styled_detail_table, hide_index=True, width="stretch")
 
 
 
@@ -672,6 +941,193 @@ def teacher_password_reset():
 
 
 
+def _teacher_auth_styles():
+    st.markdown("""
+        <style>
+            .teacher-auth-hero {
+                max-width: 760px;
+                margin: 1.25rem auto 1.5rem;
+                padding: 1.4rem 1.6rem;
+                border: 1px solid #dce1d6;
+                border-radius: 22px;
+                background: linear-gradient(125deg, #e6ecdf, #dbe6d5 62%, #e8eadc);
+                box-shadow: 0 12px 30px rgba(48,66,51,.07);
+                text-align: center;
+            }
+            .teacher-auth-hero .eyebrow {
+                color: #65746a;
+                font-size: .72rem;
+                font-weight: 700;
+                letter-spacing: .14em;
+                text-transform: uppercase;
+            }
+            .teacher-auth-hero h1 {
+                margin: .4rem 0 .35rem !important;
+                color: #26382e !important;
+                font-size: clamp(1.8rem, 3.5vw, 2.5rem) !important;
+                line-height: 1.12 !important;
+            }
+            .teacher-auth-hero p {
+                margin: 0;
+                color: #526457 !important;
+                line-height: 1.55;
+            }
+            .stApp div[data-testid="stTextInput"] {
+                max-width: 760px;
+                margin-inline: auto;
+            }
+            .stApp div[data-testid="stExpander"] {
+                max-width: 760px;
+                margin-inline: auto;
+                border-color: #dce1d6;
+                border-radius: 14px;
+                background: rgba(255,254,250,.6);
+            }
+            @media (max-width: 640px) {
+                .teacher-auth-hero { padding: 1.1rem; }
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+
+def _teacher_auth_hero(title, description):
+    st.markdown(f"""
+        <section class="teacher-auth-hero">
+          <span class="eyebrow">SmartClass AI · Teacher workspace</span>
+          <h1>{escape(str(title))}</h1>
+          <p>{escape(str(description))}</p>
+        </section>
+    """, unsafe_allow_html=True)
+
+
+
+@st.dialog("Forgot password?", width="medium")
+def _teacher_forgot_password_dialog():
+    reset_email = st.text_input(
+        "Teacher account email",
+        placeholder="teacher@example.com",
+        key="teacher_reset_email",
+    )
+    reset_email_normalized = reset_email.strip().lower()
+    pending_otp = st.session_state.get("password_reset_otp")
+    if pending_otp and pending_otp["email"] != reset_email_normalized:
+        st.session_state.pop("password_reset_otp", None)
+        st.session_state.pop("password_reset_code", None)
+        pending_otp = None
+        st.warning("The email address changed. Request a new reset code.")
+
+    if st.button("Send password reset code", key="send_teacher_reset_code"):
+        if not reset_email.strip():
+            st.warning("Enter the email address used for your teacher account.")
+        elif pending_otp and time.time() - pending_otp["sent_at"] < 60:
+            st.warning("Please wait one minute before requesting another code.")
+        else:
+            try:
+                res = request_password_reset(reset_email)
+                if isinstance(res, tuple):
+                    success = res[0]
+                else:
+                    success = res
+            except Exception as error:
+                st.error(f"Could not request password reset: {error}")
+            else:
+                if success:
+                    st.session_state.pop("password_reset_code", None)
+                    st.info(
+                        "If a teacher account exists for that email, a verification code "
+                        "has been sent to your email address."
+                    )
+                else:
+                    st.warning("No teacher account was found with that email address.")
+
+    pending_otp = st.session_state.get("password_reset_otp")
+    if pending_otp and pending_otp.get("code"):
+        st.session_state.pop("password_reset_otp", None)
+        st.session_state.pop("password_reset_code", None)
+        pending_otp = None
+    if pending_otp:
+        st.success("A password reset code was sent to your email. It expires in 10 minutes.")
+        st.text_input(
+            "6-digit verification code",
+            max_chars=6,
+            placeholder="Enter 6-digit code",
+            key="password_reset_code",
+        )
+        new_password = st.text_input(
+            "New password",
+            type="password",
+            key="password_reset_new_password",
+        )
+        confirm_password = st.text_input(
+            "Confirm new password",
+            type="password",
+            key="password_reset_confirm_password",
+        )
+
+        if st.button("Verify code and reset password", type="primary", key="verify_password_reset"):
+            code_input = st.session_state.get("password_reset_code", "").strip()
+            if not pending_otp.get("code_verified") and time.time() >= pending_otp["expires_at"]:
+                st.session_state.pop("password_reset_otp", None)
+                st.session_state.pop("password_reset_code", None)
+                st.error("That code has expired. Request a new reset code.")
+            elif not pending_otp.get("code_verified") and pending_otp["attempts"] >= 5:
+                st.session_state.pop("password_reset_otp", None)
+                st.session_state.pop("password_reset_code", None)
+                st.error("Too many incorrect attempts. Request a new reset code.")
+            elif not pending_otp.get("code_verified") and (
+                len(code_input) != 6 or not code_input.isdigit()
+            ):
+                st.warning("Enter the 6-digit code from your email.")
+            elif len(new_password) < 6:
+                st.warning("Password must be at least 6 characters.")
+            elif new_password != confirm_password:
+                st.warning("Passwords don't match.")
+            else:
+                valid_code = False
+                if pending_otp.get("code_verified"):
+                    valid_code = True
+                else:
+                    try:
+                        valid_code = verify_password_reset_code(
+                            pending_otp,
+                            code_input,
+                        )
+                    except Exception as error:
+                        valid_code = False
+                        st.error(f"Could not verify reset code: {error}")
+                    else:
+                        if not valid_code:
+                            pending_otp["attempts"] += 1
+                            if pending_otp["attempts"] >= 5:
+                                st.session_state.pop("password_reset_otp", None)
+                                st.session_state.pop("password_reset_code", None)
+                                st.error("Too many incorrect attempts. Request a new reset code.")
+                            else:
+                                st.error("Incorrect verification code.")
+                        else:
+                            pending_otp["code_verified"] = True
+
+                if valid_code:
+                    try:
+                        updated = update_teacher_password(
+                            pending_otp["teacher_id"],
+                            new_password,
+                        )
+                    except Exception as error:
+                        st.error(f"Could not update password: {error}")
+                    else:
+                        if not updated:
+                            st.error("Password could not be updated. Try again or request a new reset code.")
+                        else:
+                            st.session_state.pop("password_reset_otp", None)
+                            st.session_state.pop("password_reset_code", None)
+                            st.session_state.pop("password_reset_new_password", None)
+                            st.session_state.pop("password_reset_confirm_password", None)
+                            st.session_state["teacher_password_reset_success"] = (
+                                "Password updated successfully! You can now sign in with your new password."
+                            )
+                            st.rerun()
+
 def teacher_screen_login():
     style_background_dashboard()
     style_base_layout()
@@ -685,9 +1141,15 @@ def teacher_screen_login():
         footer_dashboard()
         return
 
-    c1, c2 = st.columns(2, vertical_alignment="center", gap="large")
+    c1, c2 = st.columns([3, 1], vertical_alignment="center", gap="large")
     with c1:
-        header_dashboard()
+        st.markdown(f"""
+            <div style="display:flex;align-items:center;justify-content:flex-start;
+                min-height:74px;width:100%;">
+              <img src="{LOGO_DATA_URI}" alt="SmartClass AI"
+                style="display:block;width:min(380px,100%);height:auto;margin:0;" />
+            </div>
+        """, unsafe_allow_html=True)
     with c2:
         if st.button("Back to Home", type="secondary", key="loginbackbtn"):
             st.session_state["login_type"] = None
@@ -695,17 +1157,11 @@ def teacher_screen_login():
             st.session_state.pop("current_teacher_tab", None)
             st.rerun()
 
-    st.space()
-    st.markdown(
-        """
-        <h2 style="text-align:center; white-space:nowrap;
-                    font-size:clamp(0.85rem, 2vw, 1.5rem);">
-            Teacher Sign-In with Email
-        </h2>
-        """,
-        unsafe_allow_html=True,
+    _teacher_auth_styles()
+    _teacher_auth_hero(
+        "Welcome, teacher",
+        "Sign in to manage attendance, subjects, and classroom learning.",
     )
-    st.space()
     st.space()
     teacher_email = st.text_input(
         "Enter your email address",
@@ -713,8 +1169,9 @@ def teacher_screen_login():
         key="teacher_login_email",
     )
     teacher_pass = st.text_input("Enter your password", type="password", placeholder="Enter your password", key="teacher_login_password")
-    st.divider()
-    btnc1 , btnc2 = st.columns(2)
+    action_spacer_left, btnc1, btnc2, btnc3, action_spacer_right = st.columns(
+        [.45, 2, 2, 2, .45], gap="small"
+    )
 
     with btnc1:
         if st.button("Login", icon=":material/passkey:", width="stretch"):
@@ -727,141 +1184,29 @@ def teacher_screen_login():
         if st.button("Register instead", type="primary", icon=":material/person_add:", width="stretch"):
             st.session_state.teacher_login_type = "register"
             st.rerun()
+    with btnc3:
+        if st.button(
+            "Forgot password?",
+            key="open_teacher_password_reset",
+            icon=":material/lock_reset:",
+            type="secondary",
+            width="stretch",
+        ):
+            _teacher_forgot_password_dialog()
 
-    with st.expander(
-        "Forgot password?",
-        expanded=("password_reset_otp" in st.session_state),
-    ):
-        reset_email = st.text_input(
-            "Teacher account email",
-            placeholder="teacher@example.com",
-            key="teacher_reset_email",
-        )
-        reset_email_normalized = reset_email.strip().lower()
-        pending_otp = st.session_state.get("password_reset_otp")
-        if pending_otp and pending_otp["email"] != reset_email_normalized:
-            st.session_state.pop("password_reset_otp", None)
-            st.session_state.pop("password_reset_code", None)
-            pending_otp = None
-            st.warning("The email address changed. Request a new reset code.")
-
-        if st.button("Send password reset code", key="send_teacher_reset_code"):
-            if not reset_email.strip():
-                st.warning("Enter the email address used for your teacher account.")
-            elif pending_otp and time.time() - pending_otp["sent_at"] < 60:
-                st.warning("Please wait one minute before requesting another code.")
-            else:
-                try:
-                    res = request_password_reset(reset_email)
-                    if isinstance(res, tuple):
-                        success = res[0]
-                    else:
-                        success = res
-                except Exception as error:
-                    st.error(f"Could not request password reset: {error}")
-                else:
-                    if success:
-                        st.session_state.pop("password_reset_code", None)
-                        st.info(
-                            "If a teacher account exists for that email, a verification code "
-                            "has been sent to your email address."
-                        )
-                    else:
-                        st.warning("No teacher account was found with that email address.")
-
-        pending_otp = st.session_state.get("password_reset_otp")
-        if pending_otp and pending_otp.get("code"):
-            st.session_state.pop("password_reset_otp", None)
-            st.session_state.pop("password_reset_code", None)
-            pending_otp = None
-        if pending_otp:
-            st.success("A password reset code was sent to your email. It expires in 10 minutes.")
-            st.text_input(
-                "6-digit verification code",
-                max_chars=6,
-                placeholder="Enter 6-digit code",
-                key="password_reset_code",
-            )
-            new_password = st.text_input(
-                "New password",
-                type="password",
-                key="password_reset_new_password",
-            )
-            confirm_password = st.text_input(
-                "Confirm new password",
-                type="password",
-                key="password_reset_confirm_password",
-            )
-
-            if st.button("Verify code and reset password", type="primary", key="verify_password_reset"):
-                code_input = st.session_state.get("password_reset_code", "").strip()
-                if not pending_otp.get("code_verified") and time.time() >= pending_otp["expires_at"]:
-                    st.session_state.pop("password_reset_otp", None)
-                    st.session_state.pop("password_reset_code", None)
-                    st.error("That code has expired. Request a new reset code.")
-                elif not pending_otp.get("code_verified") and pending_otp["attempts"] >= 5:
-                    st.session_state.pop("password_reset_otp", None)
-                    st.session_state.pop("password_reset_code", None)
-                    st.error("Too many incorrect attempts. Request a new reset code.")
-                elif not pending_otp.get("code_verified") and (
-                    len(code_input) != 6 or not code_input.isdigit()
-                ):
-                    st.warning("Enter the 6-digit code from your email.")
-                elif len(new_password) < 6:
-                    st.warning("Password must be at least 6 characters.")
-                elif new_password != confirm_password:
-                    st.warning("Passwords don't match.")
-                else:
-                    valid_code = False
-                    if pending_otp.get("code_verified"):
-                        valid_code = True
-                    else:
-                        try:
-                            valid_code = verify_password_reset_code(
-                                pending_otp,
-                                code_input,
-                            )
-                        except Exception as error:
-                            valid_code = False
-                            st.error(f"Could not verify reset code: {error}")
-                        else:
-                            if not valid_code:
-                                pending_otp["attempts"] += 1
-                                if pending_otp["attempts"] >= 5:
-                                    st.session_state.pop("password_reset_otp", None)
-                                    st.session_state.pop("password_reset_code", None)
-                                    st.error("Too many incorrect attempts. Request a new reset code.")
-                                else:
-                                    st.error("Incorrect verification code.")
-                            else:
-                                pending_otp["code_verified"] = True
-
-                    if valid_code:
-                        try:
-                            updated = update_teacher_password(
-                                pending_otp["teacher_id"],
-                                new_password,
-                            )
-                        except Exception as error:
-                            st.error(f"Could not update password: {error}")
-                        else:
-                            if not updated:
-                                st.error("Password could not be updated. Try again or request a new reset code.")
-                            else:
-                                st.session_state.pop("password_reset_otp", None)
-                                st.session_state.pop("password_reset_code", None)
-                                st.session_state.pop("password_reset_new_password", None)
-                                st.session_state.pop("password_reset_confirm_password", None)
-                                st.session_state["teacher_password_reset_success"] = (
-                                    "Password updated successfully! You can now sign in with your new password."
-                                )
-                                st.rerun()
     footer_dashboard()
 
 def teacher_screen_register():
-    c1, c2 = st.columns(2, vertical_alignment="center", gap="large")
+    _teacher_auth_styles()
+    c1, c2 = st.columns([3, 1], vertical_alignment="center", gap="large")
     with c1:
-        header_dashboard()
+        st.markdown(f"""
+            <div style="display:flex;align-items:center;justify-content:flex-start;
+                min-height:74px;width:100%;">
+              <img src="{LOGO_DATA_URI}" alt="SmartClass AI"
+                style="display:block;width:min(380px,100%);height:auto;margin:0;" />
+            </div>
+        """, unsafe_allow_html=True)
     with c2:
         if st.button("Back to Home", type="secondary", key="register_back_home"):
             st.session_state["login_type"] = None
@@ -869,10 +1214,10 @@ def teacher_screen_register():
             st.session_state.pop("current_teacher_tab", None)
             st.rerun()
             
-    st.header("Teacher Registration")
-
-    st.space()
-    st.space()
+    _teacher_auth_hero(
+        "Create your teacher account",
+        "Set up your workspace to take attendance and manage your classes.",
+    )
 
     teacher_username = st.text_input("Enter a username", placeholder="@abhishekh", key="teacher_register_username")
 
@@ -889,7 +1234,7 @@ def teacher_screen_register():
     teacher_pass_confirm = st.text_input("Confirm your password", type="password", placeholder="Confirm your password", key="teacher_register_password_confirm")
 
     st.divider()
-    btnc1, btnc2 = st.columns(2)
+    action_spacer_left, btnc1, btnc2, action_spacer_right = st.columns([1, 2, 2, 1])
     with btnc1:
         if st.button("Register now", icon=":material/passkey:", width="stretch"):
             success, message = register_teacher(

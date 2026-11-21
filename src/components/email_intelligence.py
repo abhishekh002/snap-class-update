@@ -50,7 +50,7 @@ class EmailIntelligenceUpstreamError(EmailIntelligenceError):
 
 @dataclass(frozen=True)
 class EmailIntelligenceResult:
-    """Small, typed subset of reputation fields consumed by SnapClass."""
+    """Small, typed subset of reputation fields consumed by SmartClass AI."""
 
     email_address: Optional[str]
     suggested_correction: Optional[str]
@@ -126,7 +126,7 @@ def _parse_result(payload):
 
 
 def check_email_reputation(email):
-    """Check an email and return only the reputation fields SnapClass uses."""
+    """Check an email and return only the reputation fields SmartClass AI uses."""
     normalized_email = _validate_email(email)
     key = _api_key()
     request = Request(
@@ -134,7 +134,7 @@ def check_email_reputation(email):
         headers={
             "Accept": "application/json",
             "Authorization": f"Bearer {key}",
-            "User-Agent": "SnapClass/1.0",
+            "User-Agent": "SmartClassAI/1.0",
         },
         method="GET",
     )

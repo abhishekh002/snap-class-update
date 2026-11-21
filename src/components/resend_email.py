@@ -22,7 +22,7 @@ def _format_sender(from_email):
         raise ResendEmailError("Set a valid sender address from your verified Resend domain.")
     if display_name:
         return f"{display_name} <{address}>"
-    return f"SnapClass <{address}>"
+    return f"SmartClass AI <{address}>"
 
 
 def send_password_reset_email(api_key, from_email, to_email, code):
@@ -30,13 +30,13 @@ def send_password_reset_email(api_key, from_email, to_email, code):
     payload = {
         "from": _format_sender(from_email),
         "to": [to_email],
-        "subject": "Your SnapClass password reset code",
+        "subject": "Your SmartClass AI password reset code",
         "text": (
-            f"Your SnapClass password reset code is {code}. "
+            f"Your SmartClass AI password reset code is {code}. "
             "It expires in 10 minutes. If you did not request this, ignore this email."
         ),
         "html": (
-            "<p>Your SnapClass password reset code is:</p>"
+            "<p>Your SmartClass AI password reset code is:</p>"
             f"<p style=\"font-size:24px;font-weight:bold;letter-spacing:4px\">{code}</p>"
             "<p>This code expires in 10 minutes. If you did not request it, "
             "you can ignore this email.</p>"
@@ -49,7 +49,7 @@ def send_password_reset_email(api_key, from_email, to_email, code):
             "Authorization": f"Bearer {api_key}",
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "User-Agent": "SnapClass/1.0",
+            "User-Agent": "SmartClassAI/1.0",
         },
         method="POST",
     )

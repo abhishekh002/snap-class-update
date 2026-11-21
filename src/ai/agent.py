@@ -21,11 +21,11 @@ def _create_runner():
     os.environ["GOOGLE_API_KEY"] = _get_api_key()
     agent = Agent(
         model="gemini-flash-lite-latest",
-        name="snapclass_tutor",
-        description="SnapClass AI Assistant & Academic Tutor",
-        instruction="""You are the AI Assistant & Study Tutor for SnapClass (AI-Powered Classroom Attendance & Management).
+        name="smartclass_ai_tutor",
+        description="SmartClass AI Assistant & Academic Tutor",
+        instruction="""You are the AI Assistant & Study Tutor for SmartClass AI (AI-Powered Classroom Learning & Management).
 Your role:
-1. Help teachers and students understand SnapClass features (facial recognition attendance, subject enrollment, notes).
+1. Help teachers and students understand SmartClass AI features (facial recognition attendance, subject enrollment, notes).
 2. Act as an intelligent Study Tutor: answer questions about classroom subjects, explain uploaded course notes, clarify complex academic concepts, and help students prepare for exams.
 3. Keep answers clear, encouraging, educational, and structured with bullet points where helpful.""",
     )
@@ -48,7 +48,7 @@ async def _ask_agent(message: str) -> str:
             text = "".join(p.text for p in event.content.parts if p.text)
             if text:
                 return text
-    return "I am here to help you with SnapClass and your course study materials!"
+    return "I am here to help you with SmartClass AI and your course study materials!"
 
 def ask_snapclass_ai(message: str) -> str:
     """Synchronous caller for Streamlit UI."""

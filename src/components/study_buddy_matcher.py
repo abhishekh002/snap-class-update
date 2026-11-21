@@ -1,7 +1,15 @@
+from html import escape
+
 import streamlit as st
 from supabase import PostgrestAPIError
 
 from src.ai.agent import ask_snapclass_ai
+
+
+@st.dialog("Collaborative study challenge", width="large")
+def _show_study_challenge(subject_name: str, challenge: str):
+    st.caption(f"AI study challenge · {subject_name} · 5 minutes")
+    st.markdown(challenge)
 
 
 def render_study_buddy_matcher(
@@ -13,11 +21,53 @@ def render_study_buddy_matcher(
     if not enrolled_subjects:
         return
 
-    st.subheader("AI Study-Buddy Matcher (Peer Learning Network)")
-    st.write(
-        "Find classmates enrolled in the same subject and generate a shared "
-        "study challenge."
-    )
+    st.markdown("""
+        <style>
+            .study-buddy-hero {
+                margin: .2rem 0 1rem;
+                padding: 20px 22px;
+                border: 1px solid #d5e1d9;
+                border-left: 5px solid #315b54;
+                border-radius: 17px;
+                background: linear-gradient(120deg,#fffefa,#eaf1eb);
+                box-shadow: 0 8px 22px rgba(32,58,67,.06);
+            }
+            .study-buddy-hero span {
+                color: #bd7654;
+                font-size: .68rem;
+                font-weight: 700;
+                letter-spacing: .14em;
+                text-transform: uppercase;
+            }
+            .study-buddy-hero h2 {
+                margin: 5px 0 5px;
+                color: #26382e;
+                font-size: clamp(1.25rem,2.4vw,1.65rem);
+                line-height: 1.25;
+            }
+            .study-buddy-hero p {
+                margin: 0;
+                color: #65746a;
+                line-height: 1.5;
+            }
+            .study-buddy-peer {
+                display: inline-block;
+                margin: 3px 5px 3px 0;
+                padding: 7px 11px;
+                border: 1px solid #d5e1d9;
+                border-radius: 999px;
+                background: #f2f5ef;
+                color: #385844;
+                font-size: .88rem;
+                font-weight: 600;
+            }
+        </style>
+        <section class="study-buddy-hero">
+          <span>Learn together</span>
+          <h2>AI Study-Buddy Matcher (Peer Learning Network)</h2>
+          <p>Find classmates in your subjects and practice together with an AI-made challenge.</p>
+        </section>
+    """, unsafe_allow_html=True)
 
     subject_names = [subject["name"] for subject in enrolled_subjects]
     chosen_subject = st.selectbox(
@@ -53,10 +103,13 @@ def render_study_buddy_matcher(
         ):
             peers.append(peer["name"])
 
-    st.markdown(f"#### Classmates enrolled in **{chosen_subject}**")
+    st.markdown(f"#### Classmates in {chosen_subject}")
     if peers:
-        for peer_name in peers:
-            st.markdown(f"- {peer_name}")
+        peer_pills = "".join(
+            f'<span class="study-buddy-peer">{escape(str(peer_name))}</span>'
+            for peer_name in peers
+        )
+        st.markdown(peer_pills, unsafe_allow_html=True)
     else:
         st.info("There are no other enrolled classmates to show for this subject.")
 
@@ -78,7 +131,17 @@ def render_study_buddy_matcher(
             st.session_state[f"buddy_challenge_{subject['subject_id']}"] = (
                 ask_snapclass_ai(prompt)
             )
+        _show_study_challenge(
+            chosen_subject,
+            st.session_state[f"buddy_challenge_{subject['subject_id']}"],
+        )
 
     challenge_key = f"buddy_challenge_{subject['subject_id']}"
     if challenge_key in st.session_state:
-        st.info(st.session_state[challenge_key])
+        st.caption("Your latest collaborative challenge is saved for this session.")
+        if st.button(
+            "Read latest challenge",
+            icon=":material/open_in_full:",
+            key=f"open_challenge_{subject['subject_id']}",
+        ):
+            _show_study_challenge(chosen_subject, st.session_state[challenge_key])

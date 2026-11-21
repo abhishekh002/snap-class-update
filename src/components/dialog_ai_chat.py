@@ -11,15 +11,55 @@ def _request_ai_response(message: str):
         return None
 
 
-@st.dialog("🤖 SnapClass AI Tutor & Assistant", width="large")
+@st.dialog("🤖 SmartClass AI Tutor & Assistant", width="large")
 def ai_chat_dialog(initial_prompt: str = None):
-    st.caption("Ask questions about your subjects, understand course notes, or get study help!")
+    st.markdown("""
+        <style>
+            .smart-tutor-hero {
+                position: relative; overflow: hidden; margin: .15rem 0 1rem;
+                padding: 22px 24px; border: 1px solid #31545b;
+                border-radius: 19px;
+                background: linear-gradient(128deg,#203a43,#315b54 72%,#3c6658);
+                box-shadow: 0 12px 27px rgba(32,58,67,.16);
+            }
+            .smart-tutor-hero:after {
+                content: "✦"; position: absolute; top: -24px; right: 20px;
+                color: rgba(216,239,155,.16); font-size: 8rem; line-height: 1;
+            }
+            .smart-tutor-hero .eyebrow {
+                color: #d8ef9b; font-size: .68rem; font-weight: 700;
+                letter-spacing: .14em; text-transform: uppercase;
+            }
+            .smart-tutor-hero h2 {
+                position: relative; z-index: 1; margin: 7px 0 5px;
+                color: #fffefa; font-size: clamp(1.35rem,2.6vw,1.75rem);
+                line-height: 1.2;
+            }
+            .smart-tutor-hero p {
+                position: relative; z-index: 1; margin: 0;
+                color: #e1ebe3; line-height: 1.55;
+            }
+            .stDialog [data-testid="stChatMessage"] {
+                border: 1px solid #e2e8df; border-radius: 16px;
+                background: #fffefa;
+            }
+            .stDialog [data-testid="stChatInput"] textarea {
+                border-color: #9aaf9c; border-radius: 14px;
+            }
+            @media (max-width: 640px) { .smart-tutor-hero { padding: 18px; } }
+        </style>
+        <section class="smart-tutor-hero">
+          <span class="eyebrow">Your learning companion</span>
+          <h2>Learn at your pace</h2>
+          <p>Ask about class topics, course notes, attendance, or study plans.</p>
+        </section>
+    """, unsafe_allow_html=True)
 
     if "snapclass_ai_messages" not in st.session_state:
         st.session_state.snapclass_ai_messages = [
             {
                 "role": "assistant",
-                "content": "Hi! 👋 I'm your SnapClass AI Tutor. How can I assist you with your studies or attendance today?",
+                "content": "Hi! 👋 I'm your SmartClass AI Tutor. How can I assist you with your studies or attendance today?",
             }
         ]
 

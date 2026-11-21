@@ -18,11 +18,15 @@ def blackboard_digitizer_dialog():
         st.warning("Please create at least one subject first.")
         return
 
-    st.write(
-        "Snap or upload a photo of the classroom blackboard/whiteboard. "
-        "Gemini AI will automatically transcribe equations into **LaTeX**, code into **Markdown**, "
-        "and publish a clean study guide for your enrolled students!"
-    )
+    st.markdown("""
+        <div style="margin:.25rem 0 1rem;padding:1rem 1.1rem;border:1px solid #dce1d6;
+                    border-left:4px solid #b97453;border-radius:14px;
+                    background:linear-gradient(125deg,#efe3d7,#fffefa);color:#526457;line-height:1.6;">
+          <strong style="color:#385844">From board photo to class notes</strong><br>
+          Upload or capture a board image. SmartClass AI transcribes equations into LaTeX and code into Markdown,
+          then saves the study guide for your enrolled students.
+        </div>
+    """, unsafe_allow_html=True)
 
     subj_map = {f"{s['name']} ({s['subject_code']})": s for s in subjects}
     chosen_label = st.selectbox("Assign to Subject *", list(subj_map.keys()))

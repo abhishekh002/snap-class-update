@@ -47,15 +47,15 @@ def render_tts_player(text: str, key: str) -> None:
             min-height: 40px;
             padding: 0 16px;
             border: 0;
-            border-radius: 8px;
-            background: #2563eb;
+            border-radius: 999px;
+            background: #385844;
             color: white;
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
         }}
-        button:hover {{ background: #1d4ed8; }}
-        button:focus-visible {{ outline: 3px solid #93c5fd; outline-offset: 2px; }}
+        button:hover {{ background: #294a36; }}
+        button:focus-visible {{ outline: 3px solid rgba(185,116,83,.55); outline-offset: 2px; }}
         </style>
         <button id="{button_id}" type="button" aria-pressed="false">▶ Play</button>
         <span id="{button_id}_status" aria-live="polite"></span>

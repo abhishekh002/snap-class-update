@@ -15,7 +15,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 def main():
     st.set_page_config(
-        page_title='SnapClass - AI-Powered Classroom Attendance',
+        page_title='SmartClass AI - Classroom Learning',
         page_icon=str(PAGE_ICON_PATH)
     )
     for key, default in {

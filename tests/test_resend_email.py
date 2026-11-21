@@ -20,7 +20,7 @@ class ResendEmailTests(TestCase):
         payload = json.loads(request.data.decode("utf-8"))
         self.assertEqual(email_id, "email_123")
         self.assertEqual(request.get_header("Authorization"), "Bearer test-api-key")
-        self.assertEqual(payload["from"], "SnapClass <no-reply@example.com>")
+        self.assertEqual(payload["from"], "SmartClass AI <no-reply@example.com>")
         self.assertEqual(payload["to"], ["teacher@example.net"])
         self.assertIn("042913", payload["text"])
         self.assertEqual(mock_urlopen.call_args.kwargs["timeout"], 10)
@@ -31,13 +31,13 @@ class ResendEmailTests(TestCase):
 
         send_password_reset_email(
             "test-api-key",
-            "SnapClass <no-reply@example.com>",
+            "SmartClass AI <no-reply@example.com>",
             "teacher@example.net",
             "042913",
         )
 
         payload = json.loads(mock_urlopen.call_args.args[0].data.decode("utf-8"))
-        self.assertEqual(payload["from"], "SnapClass <no-reply@example.com>")
+        self.assertEqual(payload["from"], "SmartClass AI <no-reply@example.com>")
 
     def _raise_http_error(self, status):
         raise HTTPError(
