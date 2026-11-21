@@ -25,6 +25,20 @@ class ResendEmailTests(TestCase):
         self.assertIn("042913", payload["text"])
         self.assertEqual(mock_urlopen.call_args.kwargs["timeout"], 10)
 
+    @patch("src.components.resend_email.urlopen")
+    def test_accepts_custom_sender_display_name(self, mock_urlopen):
+        mock_urlopen.return_value = BytesIO(b'{"id":"email_123"}')
+
+        send_password_reset_email(
+            "test-api-key",
+            "SnapClass <no-reply@example.com>",
+            "teacher@example.net",
+            "042913",
+        )
+
+        payload = json.loads(mock_urlopen.call_args.args[0].data.decode("utf-8"))
+        self.assertEqual(payload["from"], "SnapClass <no-reply@example.com>")
+
     def _raise_http_error(self, status):
         raise HTTPError(
             "https://api.resend.com/emails", status, "error", None, BytesIO(b"")
