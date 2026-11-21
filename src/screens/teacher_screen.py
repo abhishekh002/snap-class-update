@@ -33,6 +33,10 @@ from src.components.password_reset import (
     validate_reset_token,
     verify_password_reset_code,
 )
+from src.components.email_intelligence import (
+    EmailIntelligenceError,
+    check_email_reputation,
+)
 
 from src.components.subject_card import Subject_card
 
@@ -105,6 +109,24 @@ def register_teacher(
             return False, "That username is already taken."
         if check_teacher_email_exists(teacher_email):
             return False, "That email address is already in use."
+        st.session_state.pop("teacher_registration_warning", None)
+        try:
+            reputation = check_email_reputation(teacher_email.strip().lower())
+        except EmailIntelligenceError as error:
+            # Reputation is advisory: keep registration available if a third-party
+            # check is unavailable. SignOps OTP remains the inbox ownership check.
+            st.session_state["teacher_registration_warning"] = (
+                f"Email reputation could not be checked ({error}). "
+                "You can continue; you will still need access to this inbox "
+                "for verification codes."
+            )
+        else:
+            if reputation.is_format_valid is False or reputation.is_mx_valid is False:
+                return False, "That email address or its domain cannot receive email."
+            if reputation.is_disposable is True:
+                return False, "Please register with an email address you can keep access to."
+            if reputation.deliverability_status == "undeliverable":
+                return False, "That email address appears unable to receive email."
         create_teacher(teacher_username, teacher_pass, teacher_name, teacher_email)
     except APIError as error:
         if error.code == "42703" and "teachers.email" in error.message:
@@ -655,6 +677,8 @@ def teacher_screen_login():
     style_base_layout()
     if "teacher_registration_message" in st.session_state:
         st.success(st.session_state.pop("teacher_registration_message"))
+    if "teacher_registration_warning" in st.session_state:
+        st.warning(st.session_state.pop("teacher_registration_warning"))
     if "teacher_password_reset_success" in st.session_state:
         st.success(st.session_state.pop("teacher_password_reset_success"))
     if teacher_password_reset():

@@ -1,6 +1,7 @@
 
 from pathlib import Path
 
+from dotenv import load_dotenv
 import streamlit as st
 
 from src.screens.home_screen import home_screen
@@ -9,6 +10,7 @@ from src.screens.student_screen import student_screen
 
 from src.components.dialog_auto_enroll import auto_enroll_dialog
 PAGE_ICON_PATH = Path(__file__).resolve().parent / "src" / "assets" / "page-icon.png"
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 
 def main():
