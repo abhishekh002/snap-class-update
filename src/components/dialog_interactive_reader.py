@@ -328,13 +328,15 @@ def interactive_reader_dialog(note: dict):
                         st.session_state[eli5_cache_key] = simplified
 
         if eli5_cache_key in st.session_state:
-            st.divider()
-            st.markdown("#### 💡 Simplified Explanation")
-            st.info(st.session_state[eli5_cache_key])
-            render_tts_player(
-                st.session_state[f"eli5_cache_{note['id']}"],
-                f"eli5_{note['id']}",
-            )
+            explanation = st.session_state[eli5_cache_key]
+            with st.popover(
+                "💡 Open simplified explanation",
+                icon=":material/auto_awesome:",
+                width="stretch",
+            ):
+                st.markdown("### 💡 Simplified Explanation")
+                st.markdown(explanation)
+                render_tts_player(explanation, f"eli5_{note['id']}")
 
     with tab_assessment:
         render_assessment_tab(note)
