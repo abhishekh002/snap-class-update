@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 import streamlit as st
 from supabase import PostgrestAPIError as APIError
+from storage3.exceptions import StorageApiError
 
 from src.components.footer import footer_dashboard
 from src.components.dialog_create_subject import create_subject_dialog
@@ -208,7 +209,11 @@ def teacher_tab_course_notes():
             ai_chat_dialog()
 
     st.divider()
-    notes = get_notes_for_teacher(teacher_id)
+    try:
+        notes = get_notes_for_teacher(teacher_id)
+    except (APIError, PermissionError, RuntimeError) as error:
+        st.error(f"Could not load course notes: {error}")
+        return
     if not notes:
         st.info("You haven't uploaded any notes yet. Click 'Upload Note' or 'Blackboard to Notes' above to get started.")
         return
@@ -231,7 +236,11 @@ def teacher_tab_course_notes():
                 with c_action:
                     if st.button("📖 Interactive Reader", key=f"read_teacher_{note['id']}", width="stretch", icon=":material/menu_book:"):
                         interactive_reader_dialog(note)
-                    download = get_note_download(note)
+                    try:
+                        download = get_note_download(note)
+                    except (APIError, RuntimeError, StorageApiError) as error:
+                        st.error(f"Could not download this note: {error}")
+                        download = None
                     if download:
                         file_bytes, file_name = download
                         st.download_button(
@@ -242,9 +251,26 @@ def teacher_tab_course_notes():
                             width="stretch",
                         )
                     if st.button("🗑️ Delete", key=f"del_note_{note['id']}", width="stretch"):
-                        delete_note(note["id"], teacher_id)
-                        st.toast("Note deleted.")
-                        st.rerun()
+                        try:
+                            deleted = delete_note(note["id"], teacher_id)
+                        except (
+                            APIError,
+                            PermissionError,
+                            RuntimeError,
+                            StorageApiError,
+                            ValueError,
+                            OSError,
+                        ) as error:
+                            st.error(f"Could not complete note deletion: {error}")
+                        else:
+                            if deleted:
+                                st.toast(
+                                    "Note and attachment deleted. Linked assessments, "
+                                    "submissions, and grades were preserved."
+                                )
+                                st.rerun()
+                            else:
+                                st.error("This note could not be found or is not yours to delete.")
 
 
 def teacher_tab_take_attendance():

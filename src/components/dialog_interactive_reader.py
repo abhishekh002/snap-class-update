@@ -1,4 +1,4 @@
-import os
+import io
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 
@@ -10,6 +10,7 @@ from pptx import Presentation
 from pptx.exc import PackageNotFoundError as PptxPackageNotFoundError
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
+from storage3.exceptions import StorageApiError
 
 from src.ai.digitizer import explain_note_concept
 from src.ai.agent import ask_snapclass_ai
@@ -27,15 +28,19 @@ def _limit_preview(text: str) -> str:
     return text
 
 
-def _extract_document_text(file_path: str, suffix: str) -> str:
+def _extract_document_text(file_bytes: bytes, suffix: str) -> str:
     if suffix in {".txt", ".md", ".markdown"}:
-        with open(file_path, "r", encoding="utf-8-sig", errors="replace") as file:
-            return _limit_preview(file.read(MAX_PREVIEW_CHARS + 1))
+        text = file_bytes[: MAX_PREVIEW_CHARS + 1].decode(
+            "utf-8-sig", errors="replace"
+        )
+        return _limit_preview(text)
 
     if suffix == ".pdf":
         pages = []
         char_count = 0
-        for page_number, page in enumerate(PdfReader(file_path).pages, start=1):
+        for page_number, page in enumerate(
+            PdfReader(io.BytesIO(file_bytes)).pages, start=1
+        ):
             page_text = page.extract_text() or ""
             if not page_text.strip():
                 continue
@@ -47,7 +52,7 @@ def _extract_document_text(file_path: str, suffix: str) -> str:
         return _limit_preview("\n\n".join(pages))
 
     if suffix == ".docx":
-        document = Document(file_path)
+        document = Document(io.BytesIO(file_bytes))
         parts = [paragraph.text.strip() for paragraph in document.paragraphs if paragraph.text.strip()]
         for table in document.tables:
             parts.extend(
@@ -57,7 +62,7 @@ def _extract_document_text(file_path: str, suffix: str) -> str:
         return _limit_preview("\n\n".join(parts))
 
     if suffix == ".pptx":
-        presentation = Presentation(file_path)
+        presentation = Presentation(io.BytesIO(file_bytes))
         slides = []
         char_count = 0
         for slide_number, slide in enumerate(presentation.slides, start=1):
@@ -79,7 +84,7 @@ def _extract_document_text(file_path: str, suffix: str) -> str:
         return _limit_preview("\n\n".join(slides))
 
     if suffix == ".zip":
-        with ZipFile(file_path) as archive:
+        with ZipFile(io.BytesIO(file_bytes)) as archive:
             names = archive.namelist()
         if not names:
             return "The ZIP archive is empty."
@@ -98,18 +103,30 @@ def interactive_reader_dialog(note: dict):
     note_content = note.get("description", "")
     preview_content = note_content
     file_path = note.get("file_path")
-    preview_image = False
     preview_notice = None
+    note_download = None
+    note_file_bytes = None
     if file_path:
-        if not os.path.exists(file_path):
-            preview_notice = "The original file is not available on this server."
+        try:
+            note_download = get_note_download(note)
+        except (RuntimeError, StorageApiError) as error:
+            preview_notice = f"Could not load the original file: {error}"
+        else:
+            if note_download:
+                note_file_bytes = note_download[0]
+
+    preview_image = False
+    if file_path:
+        if note_file_bytes is None:
+            if not preview_notice:
+                preview_notice = "The original file is not available."
         else:
             suffix = Path(note.get("file_name") or file_path).suffix.lower()
             if suffix in {".png", ".jpg", ".jpeg", ".webp"}:
                 preview_image = True
             elif suffix in {".txt", ".md", ".markdown", ".pdf", ".docx", ".pptx", ".zip"}:
                 try:
-                    extracted_content = _extract_document_text(file_path, suffix)
+                    extracted_content = _extract_document_text(note_file_bytes, suffix)
                 except (
                     BadZipFile,
                     DocxPackageNotFoundError,
@@ -179,8 +196,8 @@ def interactive_reader_dialog(note: dict):
     with tab_read:
         st.markdown("### Document Content")
         with st.container(height=260, border=True):
-            if preview_image and file_path:
-                st.image(file_path, width="stretch")
+            if preview_image and note_file_bytes:
+                st.image(note_file_bytes, width="stretch")
                 if note_content:
                     st.markdown(note_content)
             else:
@@ -194,7 +211,13 @@ def interactive_reader_dialog(note: dict):
 
         col_dl, col_eli5 = st.columns([1, 1])
         with col_dl:
-            download = get_note_download(note)
+            download = note_download
+            if not file_path:
+                try:
+                    download = get_note_download(note)
+                except (RuntimeError, StorageApiError) as error:
+                    st.error(f"Could not download this note: {error}")
+                    download = None
             if download:
                 file_bytes, file_name = download
                 st.download_button(

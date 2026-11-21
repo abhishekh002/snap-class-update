@@ -1,12 +1,10 @@
-import os
 from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
 import streamlit as st
-from supabase import create_client
 
-from src.database.config import supabase
+from src.database.config import get_supabase_admin_client, supabase
 
 
 ASSESSMENT_BUCKET = "course-assessments"
@@ -42,16 +40,7 @@ def _upload_file(
 
 
 def _get_assessment_admin_client():
-    service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-    if not service_key:
-        service_key = st.secrets.get("supabase_service_role_key")
-    if not service_key:
-        raise RuntimeError(
-            "Configure the server-only supabase_service_role_key in Streamlit secrets "
-            "to use assessments. Add it to .streamlit/secrets.toml and restart "
-            "Streamlit. Never expose this key in client-side code."
-        )
-    return create_client(st.secrets["supabase_url"], str(service_key))
+    return get_supabase_admin_client()
 
 
 def create_assessment(

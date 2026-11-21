@@ -58,7 +58,11 @@ def student_dashboard():
                 st.session_state.pop("student_data", None)
                 st.rerun()
 
-    student_notes = get_notes_for_student(student_id)
+    try:
+        student_notes = get_notes_for_student(student_id)
+    except (APIError, PermissionError, RuntimeError) as error:
+        st.error(f"Could not load course notes: {error}")
+        student_notes = []
     subjects_tab, assessments_tab, learning_hub_tab = st.tabs(
         ["Enrolled Subjects", "Assessments", "Learning Hub"]
     )

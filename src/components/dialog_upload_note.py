@@ -1,4 +1,7 @@
 import streamlit as st
+from postgrest.exceptions import APIError
+from storage3.exceptions import StorageApiError
+
 from src.database.notes_db import create_note
 from src.database.db import get_teacher_subject
 
@@ -59,5 +62,12 @@ def upload_note_dialog():
                 )
                 st.toast(f"✅ Note '{title}' uploaded successfully!")
                 st.rerun()
-            except Exception as e:
+            except (
+                APIError,
+                PermissionError,
+                RuntimeError,
+                StorageApiError,
+                ValueError,
+                OSError,
+            ) as e:
                 st.error(f"Failed to upload note: {e}")
