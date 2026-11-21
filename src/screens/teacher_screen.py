@@ -1,6 +1,4 @@
 
-import hashlib
-import hmac
 import time
 from src.database.notes_db import get_note_download, get_notes_for_teacher, delete_note
 from src.components.dialog_upload_note import upload_note_dialog
@@ -33,6 +31,7 @@ from src.database.db import (
 from src.components.password_reset import (
     request_password_reset,
     validate_reset_token,
+    verify_password_reset_code,
 )
 
 from src.components.subject_card import Subject_card
@@ -772,28 +771,48 @@ def teacher_screen_login():
 
             if st.button("Verify code and reset password", type="primary", key="verify_password_reset"):
                 code_input = st.session_state.get("password_reset_code", "").strip()
-                if time.time() >= pending_otp["expires_at"]:
+                if not pending_otp.get("code_verified") and time.time() >= pending_otp["expires_at"]:
                     st.session_state.pop("password_reset_otp", None)
                     st.session_state.pop("password_reset_code", None)
                     st.error("That code has expired. Request a new reset code.")
-                elif pending_otp["attempts"] >= 5:
+                elif not pending_otp.get("code_verified") and pending_otp["attempts"] >= 5:
                     st.session_state.pop("password_reset_otp", None)
                     st.session_state.pop("password_reset_code", None)
                     st.error("Too many incorrect attempts. Request a new reset code.")
+                elif not pending_otp.get("code_verified") and (
+                    len(code_input) != 6 or not code_input.isdigit()
+                ):
+                    st.warning("Enter the 6-digit code from your email.")
+                elif len(new_password) < 6:
+                    st.warning("Password must be at least 6 characters.")
+                elif new_password != confirm_password:
+                    st.warning("Passwords don't match.")
                 else:
-                    digest = hmac.new(
-                        bytes.fromhex(pending_otp["key"]),
-                        code_input.encode("utf-8"),
-                        hashlib.sha256,
-                    ).hexdigest()
-                    if not hmac.compare_digest(digest, pending_otp["digest"]):
-                        pending_otp["attempts"] += 1
-                        st.error("Incorrect verification code.")
-                    elif len(new_password) < 6:
-                        st.warning("Password must be at least 6 characters.")
-                    elif new_password != confirm_password:
-                        st.warning("Passwords don't match.")
+                    valid_code = False
+                    if pending_otp.get("code_verified"):
+                        valid_code = True
                     else:
+                        try:
+                            valid_code = verify_password_reset_code(
+                                pending_otp["otp_id"],
+                                code_input,
+                            )
+                        except Exception as error:
+                            valid_code = False
+                            st.error(f"Could not verify reset code: {error}")
+                        else:
+                            if not valid_code:
+                                pending_otp["attempts"] += 1
+                                if pending_otp["attempts"] >= 5:
+                                    st.session_state.pop("password_reset_otp", None)
+                                    st.session_state.pop("password_reset_code", None)
+                                    st.error("Too many incorrect attempts. Request a new reset code.")
+                                else:
+                                    st.error("Incorrect verification code.")
+                            else:
+                                pending_otp["code_verified"] = True
+
+                    if valid_code:
                         try:
                             updated = update_teacher_password(
                                 pending_otp["teacher_id"],
@@ -803,7 +822,7 @@ def teacher_screen_login():
                             st.error(f"Could not update password: {error}")
                         else:
                             if not updated:
-                                st.error("Password could not be updated. Request a new reset code.")
+                                st.error("Password could not be updated. Try again or request a new reset code.")
                             else:
                                 st.session_state.pop("password_reset_otp", None)
                                 st.session_state.pop("password_reset_code", None)

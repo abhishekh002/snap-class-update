@@ -3,10 +3,7 @@ import hashlib
 import hmac
 import json
 import os
-import secrets
-import smtplib
 import time
-from email.message import EmailMessage
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
@@ -193,28 +190,37 @@ def _build_reset_url(token):
     )
 
 
-def _send_email_via_brevo(recipient, subject, email_text, html_content=None, api_key=None, sender=None):
-    api_key = api_key or _smtp_value("BREVO_API_KEY", "brevo_api_key")
-    sender = sender or _smtp_value("BREVO_FROM_EMAIL", "brevo_from_email")
-    if not api_key or not sender:
-        raise RuntimeError("Brevo is not configured: brevo_api_key and brevo_from_email are required.")
+def _signops_request(endpoint, fields):
+    use_test_key = os.environ.get("SIGNOPS_USE_TEST_KEY")
+    if use_test_key is None:
+        try:
+            use_test_key = st.secrets.get("signops_use_test_key", False)
+        except Exception:
+            use_test_key = False
+    test_mode = str(use_test_key).strip().lower() in {"1", "true", "yes", "on"}
 
-    body = {
-        "sender": {"email": sender, "name": "SnapClass"},
-        "to": [{"email": recipient}],
-        "subject": subject,
-        "textContent": email_text,
-    }
-    if html_content:
-        body["htmlContent"] = html_content
+    secret_name = "signops_test_key" if test_mode else "signops_key"
+    environment_name = "SIGNOPS_TEST_KEY" if test_mode else "SIGNOPS_KEY"
+    api_key = os.environ.get(environment_name)
+    if not api_key:
+        try:
+            api_key = st.secrets.get(secret_name)
+        except Exception:
+            api_key = None
+    if not api_key:
+        mode = "test" if test_mode else "live"
+        raise RuntimeError(
+            f"Configure the SignOps {mode} key as {secret_name} in Streamlit secrets "
+            f"or {environment_name} in the app environment."
+        )
 
-    payload = json.dumps(body).encode("utf-8")
     request = Request(
-        "https://api.brevo.com/v3/smtp/email",
-        data=payload,
+        f"https://api.signops.dev/v1/{endpoint.lstrip('/')}",
+        data=urlencode(fields).encode("utf-8"),
         headers={
-            "api-key": api_key,
-            "Content-Type": "application/json",
+            "Authorization": f"Bearer {str(api_key).strip()}",
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
             "User-Agent": "SnapClass/1.0",
         },
         method="POST",
@@ -222,182 +228,22 @@ def _send_email_via_brevo(recipient, subject, email_text, html_content=None, api
 
     try:
         with urlopen(request, timeout=20) as response:
-            if response.status != 201:
-                raise RuntimeError(
-                    f"Brevo returned unexpected status {response.status}."
-                )
+            return json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
-        error_body = error.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"Brevo rejected the email (HTTP {error.code}): {error_body}"
-        ) from error
+        try:
+            error_body = json.loads(error.read().decode("utf-8", errors="replace"))
+            detail = error_body.get("error", {})
+            message = detail.get("message") or str(detail.get("code") or error.code)
+        except (json.JSONDecodeError, AttributeError):
+            message = f"HTTP {error.code}"
+        raise RuntimeError(f"SignOps rejected the request: {message}") from error
     except URLError as error:
-        raise RuntimeError(f"Could not connect to Brevo: {error.reason}") from error
+        raise RuntimeError(f"Could not connect to SignOps: {error.reason}") from error
 
 
-def _send_reset_email(recipient, reset_url):
-    email_text = (
-        "We received a request to reset your SnapClass teacher password.\n\n"
-        f"Use this link within one hour to choose a new password:\n{reset_url}\n\n"
-        "If you did not request this, you can safely ignore this email."
-    )
-    _send_email_via_brevo(
-        recipient,
-        "Reset your SnapClass teacher password",
-        email_text,
-    )
-
-
-def _smtp_value(*names):
-    for name in names:
-        value = os.environ.get(name)
-        if value not in (None, ""):
-            return str(value).strip()
-    for name in names:
-        try:
-            value = st.secrets.get(name)
-            if value not in (None, ""):
-                return str(value).strip()
-        except Exception:
-            pass
-    return None
-
-
-def _send_email_via_smtp(
-    recipient,
-    subject,
-    email_text,
-    from_email=None,
-    host=None,
-    port=None,
-    username=None,
-    password=None,
-):
-    from_email = from_email or _smtp_value("SMTP_FROM_EMAIL", "smtp_from_email")
-    host = host or _smtp_value("SMTP_HOST", "smtp_host")
-    port = port or _smtp_value("SMTP_PORT", "smtp_port")
-    username = username or _smtp_value("SMTP_USERNAME", "smtp_username")
-    password = password or _smtp_value("SMTP_PASSWORD", "smtp_password")
-
-    if not host or not from_email:
-        raise RuntimeError("SMTP email delivery is not configured: SMTP_HOST and SMTP_FROM_EMAIL are required.")
-
-    port_value = int(port or 587)
-    message = EmailMessage()
-    message["Subject"] = subject
-    message["From"] = from_email
-    message["To"] = recipient
-    message.set_content(email_text)
-
-    try:
-        if port_value == 465:
-            server = smtplib.SMTP_SSL(host, port_value, timeout=20)
-        else:
-            server = smtplib.SMTP(host, port_value, timeout=20)
-            server.starttls()
-        if username and password:
-            server.login(username, password)
-        server.send_message(message)
-        server.quit()
-        return True
-    except Exception:
-        try:
-            server.quit()
-        except Exception:
-            pass
-        raise
-
-
-def _send_reset_email_via_smtp(recipient, reset_url, from_email=None):
-    email_text = (
-        "We received a request to reset your SnapClass teacher password.\n\n"
-        f"Use this link within one hour to choose a new password:\n{reset_url}\n\n"
-        "If you did not request this, you can safely ignore this email."
-    )
-    return _send_email_via_smtp(
-        recipient,
-        "Reset your SnapClass teacher password",
-        email_text,
-        from_email=from_email,
-    )
-
-
-def _send_transactional_email(email, subject, email_text, html_content=None):
-    brevo_api_key = _smtp_value("BREVO_API_KEY", "brevo_api_key")
-    brevo_from_email = _smtp_value("BREVO_FROM_EMAIL", "brevo_from_email")
-
-    brevo_error = None
-    if brevo_api_key and brevo_from_email:
-        try:
-            _send_email_via_brevo(
-                email,
-                subject,
-                email_text,
-                html_content=html_content,
-                api_key=brevo_api_key,
-                sender=brevo_from_email,
-            )
-            return
-        except Exception as error:
-            brevo_error = error
-
-    smtp_host = _smtp_value("SMTP_HOST", "smtp_host")
-    smtp_from = _smtp_value("SMTP_FROM_EMAIL", "smtp_from_email")
-    if smtp_host and smtp_from:
-        try:
-            _send_email_via_smtp(
-                email,
-                subject,
-                email_text,
-            )
-            return
-        except Exception as error:
-            if brevo_error:
-                raise RuntimeError(
-                    f"Brevo delivery failed: {brevo_error}. SMTP delivery failed: {error}"
-                ) from error
-            raise
-
-    if brevo_error:
-        raise RuntimeError(f"Brevo delivery failed: {brevo_error}") from brevo_error
-    raise RuntimeError(
-        "Email delivery is not configured. Set BREVO_API_KEY and BREVO_FROM_EMAIL, "
-        "or configure SMTP_HOST and SMTP_FROM_EMAIL."
-    )
-
-
-def send_password_reset_code(email, code):
-    email_text = (
-        f"Your SnapClass password reset verification code is: {code}\n\n"
-        "This code will expire in 10 minutes.\n\n"
-        "If you did not request a password reset, please ignore this email."
-    )
-    html_content = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-        <h2 style="color: #0f172a; margin-top: 0; font-size: 24px; font-weight: 700;">SnapClass Password Reset</h2>
-        <p style="color: #475569; font-size: 15px; line-height: 1.6;">
-            We received a request to reset your SnapClass teacher account password. Use the verification code below to complete the reset:
-        </p>
-        <div style="text-align: center; margin: 28px 0;">
-            <div style="display: inline-block; font-size: 34px; font-weight: 700; letter-spacing: 6px; color: #2563eb; background-color: #eff6ff; padding: 12px 28px; border-radius: 8px; border: 1px dashed #93c5fd;">
-                {code}
-            </div>
-        </div>
-        <p style="color: #64748b; font-size: 13px; line-height: 1.5;">
-            ⏱️ This code is valid for <strong>10 minutes</strong>. If you did not request this, you can safely ignore this email.
-        </p>
-        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
-        <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-bottom: 0;">
-            SnapClass • AI-Powered Classroom Attendance
-        </p>
-    </div>
-    """
-    _send_transactional_email(
-        email,
-        "Your SnapClass password reset code",
-        email_text,
-        html_content=html_content,
-    )
+def verify_password_reset_code(otp_id, code):
+    result = _signops_request("otp/verify", {"otp_id": otp_id, "code": code})
+    return bool(result.get("valid"))
 
 
 def request_password_reset(email):
@@ -405,19 +251,22 @@ def request_password_reset(email):
     if teacher is None:
         return False, None
 
-    code = f"{secrets.randbelow(1_000_000):06d}"
-    send_password_reset_code(teacher["email"], code)
+    response = _signops_request(
+        "otp/send",
+        {"email": teacher["email"], "app_name": "SnapClass"},
+    )
+    otp_id = response.get("otp_id")
+    if not otp_id:
+        raise RuntimeError("SignOps did not return a reset code reference.")
 
-    key = secrets.token_bytes(32)
     st.session_state["password_reset_otp"] = {
         "email": teacher["email"].strip().lower(),
         "teacher_id": teacher["teacher_id"],
-        "key": key.hex(),
-        "digest": hmac.new(key, code.encode("ascii"), hashlib.sha256).hexdigest(),
+        "otp_id": otp_id,
         "sent_at": time.time(),
         "expires_at": time.time() + 600,
         "attempts": 0,
-        "code": None,
+        "code_verified": False,
     }
     st.session_state.pop("password_reset_code", None)
 
