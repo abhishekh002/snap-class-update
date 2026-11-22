@@ -5,16 +5,17 @@ from src.components.footer import footer_home
 from src.components.dialog_ai_chat import ai_chat_dialog
 from src.ui.base_layout import style_base_layout, style_background_home
 
-@st.dialog("SmartClass AI tutorial", width="large")
+@st.dialog("SnapClass AI walkthrough", width="large")
 def _show_home_tutorial():
     components.html(
         """
-        <div style="width:100%; margin:0 auto;">
+        <div style="width:100%; margin:0 auto; padding:12px; border-radius:24px; background:linear-gradient(135deg,#111c35,#174f62 58%,#67c7aa); box-shadow:0 24px 60px rgba(15,35,60,.22);">
+            <div style="padding:10px 10px 16px; color:#f8fbff; font:600 14px/1.4 sans-serif; letter-spacing:.04em;">A QUICK TOUR OF YOUR CLASSROOM</div>
             <iframe
                 width="100%"
                 height="500"
-                src="https://www.youtube.com/embed/dtWFq9geh2w?rel=0"
-                title="SmartClass AI tutorial"
+                src="https://www.youtube.com/embed/3TwQtB3KcM4?rel=0"
+                title="SnapClass AI walkthrough"
                 frameborder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 referrerpolicy="strict-origin-when-cross-origin"
@@ -190,6 +191,31 @@ def home_screen():
                 .home-intro { margin-bottom: 1.5rem; }
                 .portal-copy > p:not(.portal-kicker) { min-height: 0; }
             }
+            .home-intro {
+                max-width: 980px;
+                padding: clamp(1.8rem, 5vw, 3.4rem) 1.5rem;
+                border: 1px solid #cde1e4;
+                border-radius: 30px;
+                background: radial-gradient(ellipse at 85% 0%,rgba(97,200,170,.22),transparent 38%),linear-gradient(135deg,#f7fbff,#edf7f5 58%,#f6f3ea);
+                box-shadow: 0 22px 55px rgba(30,61,79,.08);
+            }
+            .home-intro .eyebrow { border-color:#c8e3df; background:#e6f5f1; color:#176a6c; }
+            .home-intro h1 { color:#142b42 !important; }
+            .home-intro p { color:#526879 !important; }
+            .stApp div[data-testid="stColumn"]:has(.portal-copy) {
+                border:1px solid #d9e7ed !important;
+                border-top:4px solid #348b8b !important;
+                border-radius:24px !important;
+                padding:1.45rem !important;
+                background:linear-gradient(155deg,#fff 30%,#f0f8f8) !important;
+                box-shadow:0 12px 32px rgba(28,55,74,.07);
+            }
+            .stApp div[data-testid="stColumn"]:has(.portal-teacher) {
+                border-color:#e5e0d4 !important;
+                border-top-color:#cf9a49 !important;
+                background:linear-gradient(155deg,#fff 25%,#fbf7ed) !important;
+            }
+            .portal-teacher .portal-kicker { border-color:#eee2c9 !important; background:#fbf4e6 !important; color:#91611e !important; }
         </style>
         <div class="home-intro">
             <span class="eyebrow">SMART LEARNING · CONNECTED CLASSROOMS</span>
