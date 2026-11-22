@@ -10,6 +10,7 @@ from src.components.study_buddy_matcher import render_study_buddy_matcher
 from src.database.assessments_db import get_student_dashboard_assessments
 
 import numpy as np
+import mimetypes
 import streamlit as st
 from PIL import Image
 from supabase import PostgrestAPIError as APIError
@@ -536,15 +537,24 @@ def student_dashboard():
                         with c_nactions:
                             if st.button("📖 Interactive Reader", key=f"read_student_{note['id']}", width="stretch", type="primary", icon=":material/menu_book:"):
                                 interactive_reader_dialog(note)
-                            download = get_note_download(note)
+                            try:
+                                download = get_note_download(note)
+                            except Exception as error:
+                                st.error(f"Could not download this file: {error}")
+                                download = None
                             if download:
                                 data_bytes, file_name = download
                                 st.download_button(
-                                    label="⬇️ Download",
+                                    label="⬇️ Download Original File",
                                     data=data_bytes,
                                     file_name=file_name,
+                                    mime=(
+                                        mimetypes.guess_type(file_name)[0]
+                                        or "application/octet-stream"
+                                    ),
                                     key=f"dl_student_{note['id']}",
                                     width="stretch",
+                                    on_click="ignore",
                                 )
                             if st.button("💡 Ask AI Tutor", key=f"ask_ai_{note['id']}", width="stretch"):
                                 ai_chat_dialog(initial_prompt=f"Can you explain the key concepts of '{note['title']}' for the subject '{note['subject_name']}'? Overview: {note.get('description', '')}")

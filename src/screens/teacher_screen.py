@@ -1,5 +1,6 @@
 
 import time
+import mimetypes
 from html import escape
 from src.database.notes_db import get_note_download, get_notes_for_teacher, delete_note
 from src.components.dialog_upload_note import upload_note_dialog
@@ -397,11 +398,16 @@ def teacher_tab_course_notes():
                     if download:
                         file_bytes, file_name = download
                         st.download_button(
-                            label="⬇️ Download",
+                            label="⬇️ Download Original File",
                             data=file_bytes,
                             file_name=file_name,
+                            mime=(
+                                mimetypes.guess_type(file_name)[0]
+                                or "application/octet-stream"
+                            ),
                             key=f"dl_teacher_{note['id']}",
                             width="stretch",
+                            on_click="ignore",
                         )
                     if st.button("🗑️ Delete", key=f"del_note_{note['id']}", width="stretch"):
                         try:

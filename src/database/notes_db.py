@@ -114,23 +114,21 @@ def _remove_local_backup_note(
 
 
 def get_note_download(note: dict) -> tuple[bytes, str] | None:
+    """Return the uploaded original attachment, never a generated text substitute."""
     file_path = note.get("file_path")
-    if file_path:
-        client = get_supabase_admin_client()
-        file_bytes = client.storage.from_(NOTES_BUCKET).download(file_path)
-        return bytes(file_bytes), note.get("file_name") or Path(file_path).name
-
-    description = (note.get("description") or "").strip()
-    if not description:
+    if not file_path:
+        return None
+    if (
+        "(AI Blackboard Notes)" in str(note.get("title") or "")
+        and str(note.get("file_name") or "").endswith("_digitized_notes.md")
+    ):
+        # Legacy digitizer records stored only a generated transcription, not the photo.
         return None
 
-    title = (note.get("title") or "Course note").strip()
-    safe_title = "".join(
-        character if character.isalnum() or character in "-_" else "_"
-        for character in title
-    ).strip("_") or "course_note"
-    content = f"# {title}\n\n{description}\n"
-    return content.encode("utf-8"), f"{safe_title}.md"
+    client = get_supabase_admin_client()
+    file_bytes = client.storage.from_(NOTES_BUCKET).download(file_path)
+    file_name = note.get("file_name") or Path(file_path).name
+    return bytes(file_bytes), Path(file_name).name
 
 
 def create_note(
