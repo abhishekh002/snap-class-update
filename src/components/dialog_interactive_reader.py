@@ -1,4 +1,5 @@
 import io
+import mimetypes
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 
@@ -10,9 +11,8 @@ from pptx import Presentation
 from pptx.exc import PackageNotFoundError as PptxPackageNotFoundError
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
-from storage3.exceptions import StorageApiError
 
-from src.ai.digitizer import explain_note_concept
+from src.ai.digitizer import explain_note_concept, sanitize_mermaid_blocks
 from src.ai.agent import ask_snapclass_ai
 from src.components.assessment_flow import render_assessment_tab
 from src.components.tts_player import render_tts_player
@@ -109,7 +109,7 @@ def interactive_reader_dialog(note: dict):
     if file_path:
         try:
             note_download = get_note_download(note)
-        except (RuntimeError, StorageApiError) as error:
+        except Exception as error:
             preview_notice = f"Could not load the original file: {error}"
         else:
             if note_download:
@@ -158,6 +158,9 @@ def interactive_reader_dialog(note: dict):
                     f"Preview is not supported for {suffix or 'this file type'}. "
                     "You can still download the original file."
                 )
+
+    preview_content = sanitize_mermaid_blocks(preview_content)
+    note_content = sanitize_mermaid_blocks(note_content)
 
     read_aloud_text = str(preview_content or "").strip()
     if not read_aloud_text:
@@ -294,7 +297,7 @@ def interactive_reader_dialog(note: dict):
             if not file_path:
                 try:
                     download = get_note_download(note)
-                except (RuntimeError, StorageApiError) as error:
+                except Exception as error:
                     st.error(f"Could not download this note: {error}")
                     download = None
             if download:
@@ -303,7 +306,12 @@ def interactive_reader_dialog(note: dict):
                     label="⬇️ Download Note",
                     data=file_bytes,
                     file_name=file_name,
+                    mime=(
+                        mimetypes.guess_type(file_name)[0]
+                        or "application/octet-stream"
+                    ),
                     key=f"reader_dl_{note['id']}",
+                    on_click="ignore",
                     width="stretch",
                 )
         with col_eli5:
@@ -335,7 +343,7 @@ def interactive_reader_dialog(note: dict):
                 width="stretch",
             ):
                 st.markdown("### 💡 Simplified Explanation")
-                st.markdown(explanation)
+                st.markdown(sanitize_mermaid_blocks(explanation))
                 render_tts_player(explanation, f"eli5_{note['id']}")
 
     with tab_assessment:
@@ -358,7 +366,11 @@ def interactive_reader_dialog(note: dict):
 
         if f"qa_ans_{note['id']}" in st.session_state:
             st.markdown("#### Answer:")
-            st.write(st.session_state[f"qa_ans_{note['id']}"])
+            st.markdown(
+                sanitize_mermaid_blocks(
+                    st.session_state[f"qa_ans_{note['id']}"]
+                )
+            )
             render_tts_player(
                 st.session_state[f"qa_ans_{note['id']}"],
                 f"note_answer_{note['id']}",

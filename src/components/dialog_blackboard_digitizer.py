@@ -1,7 +1,7 @@
 import io
 import streamlit as st
 from PIL import Image
-from src.ai.digitizer import digitize_blackboard_image
+from src.ai.digitizer import digitize_blackboard_image, sanitize_mermaid_blocks
 from src.database.notes_db import create_note
 from src.database.db import get_teacher_subject
 
@@ -63,6 +63,7 @@ def blackboard_digitizer_dialog():
                 class MockUpload:
                     def __init__(self, name, data):
                         self.name = name
+                        self.type = "text/markdown; charset=utf-8"
                         self.data = data
                     def getvalue(self):
                         return self.data
@@ -80,7 +81,9 @@ def blackboard_digitizer_dialog():
                     uploaded_file=mock_file,
                 )
 
-                st.session_state["last_digitized_preview"] = transcription
+                st.session_state["last_digitized_preview"] = sanitize_mermaid_blocks(
+                    transcription
+                )
                 st.toast(f"✅ Digitized study guide '{title}' published to enrolled students!")
                 st.rerun()
             except Exception as e:
@@ -89,4 +92,6 @@ def blackboard_digitizer_dialog():
     if "last_digitized_preview" in st.session_state:
         st.divider()
         st.subheader("📄 Latest Digitized Study Guide Preview")
-        st.markdown(st.session_state["last_digitized_preview"])
+        st.markdown(
+            sanitize_mermaid_blocks(st.session_state["last_digitized_preview"])
+        )

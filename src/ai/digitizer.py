@@ -1,5 +1,6 @@
 import os
 import io
+import re
 import json
 import asyncio
 import streamlit as st
@@ -8,6 +9,15 @@ from google.genai import types
 
 
 MAX_EXPLANATION_INPUT_CHARS = 6000
+
+def sanitize_mermaid_blocks(text: str | None) -> str:
+    """Show Mermaid fences as text so malformed diagrams cannot break note previews."""
+    content = str(text or "")
+    return re.sub(
+        r"(?im)^([ \t]*\x60{3})[ \t]*mermaid\b[^\r\n]*",
+        r"\1text",
+        content,
+    )
 
 
 def _get_client():
@@ -30,7 +40,7 @@ Convert this classroom blackboard/whiteboard photo into a clean, comprehensive s
 1. Format all mathematical and physical equations in clean LaTeX notation using $...$ for inline or $$...$$ for display equations.
 2. Format all code snippets in properly highlighted markdown code blocks (e.g. ```python, ```c, etc.).
 3. Organize the content with clear Markdown Headings (#, ##, ###), bullet points, and numbered lists.
-4. If there are flowcharts or diagrams, describe them clearly or represent them as text/mermaid diagrams.
+4. If there are flowcharts or diagrams, describe them using concise plain-text steps and arrows. Do not emit Mermaid syntax or Mermaid code fences.
 5. Add a short "Key Concepts Summary" section at the end.
 Be accurate, pedagogical, and clean."""
 
