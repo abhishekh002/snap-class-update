@@ -24,7 +24,7 @@ def _show_home_tutorial():
             </iframe>
         </div>
         """,
-        height=510,
+        height=570,
     )
 
 
