@@ -5,6 +5,7 @@ from src.database.notes_db import get_note_download, get_notes_for_teacher, dele
 from src.components.dialog_upload_note import upload_note_dialog
 from src.components.dialog_blackboard_digitizer import blackboard_digitizer_dialog
 from src.components.dialog_interactive_reader import interactive_reader_dialog
+from src.components.markdown_utils import sanitize_mermaid_blocks
 from src.components.dialog_ai_chat import ai_chat_dialog
 
 from datetime import datetime, timezone
@@ -383,7 +384,7 @@ def teacher_tab_course_notes():
                 with c_info:
                     st.markdown(f"**{note['title']}**")
                     if note.get("description"):
-                        st.write(note["description"])
+                        st.markdown(sanitize_mermaid_blocks(note["description"]))
                     st.caption(f"Uploaded: {note.get('created_at', '')} | Size: {note.get('file_size_kb', 0)} KB")
                 with c_action:
                     if st.button("📖 Interactive Reader", key=f"read_teacher_{note['id']}", width="stretch", icon=":material/menu_book:"):

@@ -1,5 +1,6 @@
 import streamlit as st
 from src.ai.agent import ask_snapclass_ai
+from src.components.markdown_utils import sanitize_mermaid_blocks
 from src.components.tts_player import render_tts_player
 
 
@@ -80,7 +81,7 @@ def ai_chat_dialog(initial_prompt: str = None):
     with chat_container:
         for index, msg in enumerate(st.session_state.snapclass_ai_messages):
             with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+                st.markdown(sanitize_mermaid_blocks(msg["content"]))
                 if msg["role"] == "assistant":
                     render_tts_player(msg["content"], f"ai_chat_{index}")
 
@@ -90,13 +91,13 @@ def ai_chat_dialog(initial_prompt: str = None):
         st.session_state.snapclass_ai_messages.append({"role": "user", "content": user_input})
         with chat_container:
             with st.chat_message("user"):
-                st.markdown(user_input)
+                st.markdown(sanitize_mermaid_blocks(user_input))
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
                     reply = _request_ai_response(user_input)
                 if reply is not None:
                     reply_index = len(st.session_state.snapclass_ai_messages)
-                    st.markdown(reply)
+                    st.markdown(sanitize_mermaid_blocks(reply))
                     render_tts_player(reply, f"ai_chat_{reply_index}")
         if reply is not None:
             st.session_state.snapclass_ai_messages.append({"role": "assistant", "content": reply})

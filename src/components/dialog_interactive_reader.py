@@ -12,9 +12,10 @@ from pptx.exc import PackageNotFoundError as PptxPackageNotFoundError
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
-from src.ai.digitizer import explain_note_concept, sanitize_mermaid_blocks
+from src.ai.digitizer import explain_note_concept
 from src.ai.agent import ask_snapclass_ai
 from src.components.assessment_flow import render_assessment_tab
+from src.components.markdown_utils import sanitize_mermaid_blocks
 from src.components.tts_player import render_tts_player
 from src.database.notes_db import get_note_download
 
@@ -106,6 +107,14 @@ def interactive_reader_dialog(note: dict):
     preview_notice = None
     note_download = None
     note_file_bytes = None
+    if (
+        "(AI Blackboard Notes)" in str(note.get("title") or "")
+        and str(note.get("file_name") or "").endswith("_digitized_notes.md")
+    ):
+        st.info(
+            "This older digitized note only saved its Markdown transcription. "
+            "Its original blackboard photo was not stored and cannot be recovered from this note."
+        )
     if file_path:
         try:
             note_download = get_note_download(note)
@@ -158,6 +167,17 @@ def interactive_reader_dialog(note: dict):
                     f"Preview is not supported for {suffix or 'this file type'}. "
                     "You can still download the original file."
                 )
+
+    if (
+        "(AI Blackboard Notes)" in str(note.get("title") or "")
+        and note_file_bytes
+        and Path(note.get("file_name") or "").suffix.lower() == ".md"
+    ):
+        try:
+            preview_content = note_file_bytes.decode("utf-8-sig")
+            note_content = preview_content
+        except UnicodeDecodeError:
+            preview_notice = "The digitized note file is not valid UTF-8 Markdown."
 
     preview_content = sanitize_mermaid_blocks(preview_content)
     note_content = sanitize_mermaid_blocks(note_content)
@@ -303,7 +323,11 @@ def interactive_reader_dialog(note: dict):
             if download:
                 file_bytes, file_name = download
                 st.download_button(
-                    label="⬇️ Download Note",
+                    label=(
+                        "⬇️ Download Original Image"
+                        if Path(file_name).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+                        else "⬇️ Download Original File"
+                    ),
                     data=file_bytes,
                     file_name=file_name,
                     mime=(
@@ -314,6 +338,26 @@ def interactive_reader_dialog(note: dict):
                     on_click="ignore",
                     width="stretch",
                 )
+                if (
+                    "(AI Blackboard Notes)" in str(note.get("title") or "")
+                    and Path(file_name).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+                    and note_content.strip()
+                ):
+                    notes_title = str(note.get("title") or "Digitized Notes")
+                    safe_name = "".join(
+                        character if character.isalnum() or character in "-_" else "_"
+                        for character in notes_title
+                    ).strip("_") or "digitized_notes"
+                    notes_bytes = f"# {notes_title}\n\n{note_content}\n".encode("utf-8")
+                    st.download_button(
+                        label="⬇️ Download Digitized Notes (.md)",
+                        data=notes_bytes,
+                        file_name=f"{safe_name}.md",
+                        mime="text/markdown; charset=utf-8",
+                        key=f"reader_md_dl_{note['id']}",
+                        on_click="ignore",
+                        width="stretch",
+                    )
         with col_eli5:
             eli5_cache_key = f"eli5_cache_{note['id']}"
             if st.button(

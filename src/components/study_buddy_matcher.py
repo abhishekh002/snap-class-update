@@ -1,6 +1,7 @@
 from html import escape
 
 import streamlit as st
+from src.components.markdown_utils import sanitize_mermaid_blocks
 from supabase import PostgrestAPIError
 
 from src.ai.agent import ask_snapclass_ai
@@ -9,7 +10,7 @@ from src.ai.agent import ask_snapclass_ai
 @st.dialog("Collaborative study challenge", width="large")
 def _show_study_challenge(subject_name: str, challenge: str):
     st.caption(f"AI study challenge · {subject_name} · 5 minutes")
-    st.markdown(challenge)
+    st.markdown(sanitize_mermaid_blocks(challenge))
 
 
 def render_study_buddy_matcher(

@@ -1,7 +1,8 @@
 import io
 import streamlit as st
 from PIL import Image
-from src.ai.digitizer import digitize_blackboard_image, sanitize_mermaid_blocks
+from src.ai.digitizer import digitize_blackboard_image
+from src.components.markdown_utils import sanitize_mermaid_blocks
 from src.database.notes_db import create_note
 from src.database.db import get_teacher_subject
 
@@ -58,32 +59,17 @@ def blackboard_digitizer_dialog():
                 img_bytes = image_file.getvalue()
                 transcription = digitize_blackboard_image(img_bytes, mime_type="image/jpeg")
 
-                # Create text file from transcription
-                txt_bytes = transcription.encode("utf-8")
-                class MockUpload:
-                    def __init__(self, name, data):
-                        self.name = name
-                        self.type = "text/markdown; charset=utf-8"
-                        self.data = data
-                    def getvalue(self):
-                        return self.data
-
-                safe_title = "".join(c if c.isalnum() else "_" for c in title.strip()[:25])
-                mock_file = MockUpload(f"{safe_title}_digitized_notes.md", txt_bytes)
-
                 note = create_note(
                     subject_id=chosen_subject.get("subject_id", chosen_subject.get("id")),
                     subject_name=chosen_subject["name"],
                     teacher_id=teacher_id,
                     teacher_name=teacher.get("name", "Teacher"),
                     title=title.strip() + " (AI Blackboard Notes)",
-                    description=f"Auto-digitized blackboard notes with LaTeX & Markdown.\n\n" + transcription[:280] + "...",
-                    uploaded_file=mock_file,
+                    description=sanitize_mermaid_blocks(transcription),
+                    uploaded_file=image_file,
                 )
 
-                st.session_state["last_digitized_preview"] = sanitize_mermaid_blocks(
-                    transcription
-                )
+                st.session_state["last_digitized_preview"] = sanitize_mermaid_blocks(transcription)
                 st.toast(f"✅ Digitized study guide '{title}' published to enrolled students!")
                 st.rerun()
             except Exception as e:

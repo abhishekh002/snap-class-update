@@ -1,6 +1,5 @@
 import os
 import io
-import re
 import json
 import asyncio
 import streamlit as st
@@ -9,16 +8,6 @@ from google.genai import types
 
 
 MAX_EXPLANATION_INPUT_CHARS = 6000
-
-def sanitize_mermaid_blocks(text: str | None) -> str:
-    """Show Mermaid fences as text so malformed diagrams cannot break note previews."""
-    content = str(text or "")
-    return re.sub(
-        r"(?im)^([ \t]*\x60{3})[ \t]*mermaid\b[^\r\n]*",
-        r"\1text",
-        content,
-    )
-
 
 def _get_client():
     api_key = None
