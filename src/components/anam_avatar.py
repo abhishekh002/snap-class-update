@@ -113,7 +113,7 @@ def _avatar_html(session_token: str) -> str:
 </head>
 <body>
   <div class="wrap">
-    <video id="anam-video" autoplay playsinline aria-label="Abhishekh AI avatar"></video>
+    <video id="anam-video" autoplay playsinline aria-label="SnapClass AI avatar"></video>
     <div class="controls">
       <button id="start" type="button">Start voice chat</button>
       <button id="stop" type="button" disabled>End chat</button>
@@ -146,7 +146,7 @@ def _avatar_html(session_token: str) -> str:
         client = window.createAnamClient(sessionToken);
         await client.streamToVideoElement("anam-video");
         stopButton.disabled = false;
-        status.textContent = "Connected. Speak naturally to Abhishekh.";
+        status.textContent = "Connected. Speak with your SnapClass AI tutor.";
       } catch (_) {
         await stopAvatar();
         status.textContent = "Could not connect. Check microphone permission and Anam setup.";
@@ -161,10 +161,48 @@ def _avatar_html(session_token: str) -> str:
     return page.replace("/* ANAM_SDK_BUNDLE */", bundle).replace("/* SESSION_TOKEN */", token_literal)
 
 
-def render_anam_avatar() -> None:
-    with st.expander("🎙️ Talk with Abhishekh", expanded=False):
-        try:
-            session_token = _session_token()
-            components.html(_avatar_html(session_token), height=470, scrolling=False)
-        except RuntimeError as error:
-            st.info(str(error))
+def render_anam_avatar(expanded: bool = False) -> None:
+    st.markdown("""
+        <style>
+            .st-key-anam_voice_studio [data-testid="stExpander"] {
+                overflow: hidden;
+                border: 1px solid #cfe0dc !important;
+                border-left: 5px solid #36888a !important;
+                border-radius: 17px !important;
+                background: linear-gradient(115deg, #fffefa, #edf6f3) !important;
+                box-shadow: 0 9px 22px rgba(32,58,67,.08);
+            }
+            .st-key-anam_voice_studio [data-testid="stExpander"] summary {
+                min-height: 3.35rem;
+                padding: .15rem .8rem;
+                transition: background-color .18s ease;
+            }
+            .st-key-anam_voice_studio [data-testid="stExpander"] summary:hover {
+                background: rgba(54,136,138,.07);
+            }
+            .st-key-anam_voice_studio [data-testid="stExpander"] summary p {
+                color: #285f61 !important;
+                font-size: .98rem;
+                font-weight: 700;
+                letter-spacing: .005em;
+            }
+            .voice-studio-intro {
+                margin: 0 0 .8rem;
+                color: #65746a;
+                font-size: .88rem;
+                line-height: 1.5;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    with st.container(key="anam_voice_studio"):
+        with st.expander("🎙️ SnapClass Voice Studio", expanded=expanded):
+            st.markdown(
+                '<p class="voice-studio-intro">Speak with SnapClass AI about class topics, course notes, or study plans.</p>',
+                unsafe_allow_html=True,
+            )
+            try:
+                session_token = _session_token()
+                components.html(_avatar_html(session_token), height=470, scrolling=False)
+            except RuntimeError as error:
+                st.info(str(error))

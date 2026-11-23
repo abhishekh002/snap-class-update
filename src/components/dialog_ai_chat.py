@@ -28,7 +28,24 @@ def _request_ai_response(message: str):
         return "I could not complete that response. Please try again."
 
 
-@st.dialog("🎓 SmartClass Study & Teach Hub", width="large")
+def open_ai_learning_dialog(audience: str = None):
+    """Open the mode chooser so users can select voice or text chat."""
+    st.session_state.pop("smartclass_ai_interaction_mode", None)
+    ai_chat_dialog(audience=audience)
+
+
+def open_ai_chat_dialog(initial_prompt: str, audience: str = None):
+    """Open text chat directly for a contextual prompt, such as a course note."""
+    st.session_state.pop("smartclass_ai_interaction_mode", None)
+    st.session_state.pop("smartclass_ai_prompt_route", None)
+    ai_chat_dialog(initial_prompt=initial_prompt, audience=audience)
+
+
+def _set_ai_interaction_mode(mode: str):
+    st.session_state["smartclass_ai_interaction_mode"] = mode
+
+
+@st.dialog("✨ SnapClass AI Learning Studio", width="large")
 def ai_chat_dialog(initial_prompt: str = None, audience: str = None):
     st.markdown("""
         <style>
@@ -76,6 +93,27 @@ def ai_chat_dialog(initial_prompt: str = None, audience: str = None):
                 letter-spacing: .08em;
                 text-transform: uppercase;
             }
+            .ai-mode-card {
+                min-height: 8.5rem;
+                margin-bottom: .75rem;
+                padding: 1rem 1.05rem;
+                border: 1px solid #d7e4dc;
+                border-radius: 16px;
+                background: linear-gradient(145deg,#fffefa,#f0f5ef);
+            }
+            .ai-mode-card.voice { border-top: 4px solid #36888a; }
+            .ai-mode-card.chat { border-top: 4px solid #829a79; }
+            .ai-mode-card h3 {
+                margin: 0 0 .35rem;
+                color: #385844;
+                font-size: 1.05rem;
+            }
+            .ai-mode-card p {
+                margin: 0;
+                color: #65746a;
+                font-size: .88rem;
+                line-height: 1.45;
+            }
             .stDialog [data-testid="stHorizontalBlock"] .stButton > button {
                 min-height: 3.1rem;
                 white-space: normal;
@@ -83,10 +121,84 @@ def ai_chat_dialog(initial_prompt: str = None, audience: str = None):
             }
             @media (max-width: 640px) { .smart-tutor-hero { padding: 18px; } }
         </style>
+    """, unsafe_allow_html=True)
+
+    mode_key = "smartclass_ai_interaction_mode"
+    prompt_route_key = "smartclass_ai_prompt_route"
+    if initial_prompt and st.session_state.get(prompt_route_key) != initial_prompt:
+        st.session_state[mode_key] = "chat"
+        st.session_state[prompt_route_key] = initial_prompt
+    interaction_mode = st.session_state.get(mode_key)
+
+    if interaction_mode == "talk":
+        if st.button("← Choose another way", key="ai_mode_back_from_talk"):
+            st.session_state.pop(mode_key, None)
+            interaction_mode = None
+    elif interaction_mode == "chat":
+        if st.button("← Choose another way", key="ai_mode_back_from_chat"):
+            st.session_state.pop(mode_key, None)
+            interaction_mode = None
+
+    if interaction_mode is None:
+        st.markdown("""
+            <section class="smart-tutor-hero">
+              <span class="eyebrow">SnapClass AI · Learning studio</span>
+              <h2>How would you like to learn today?</h2>
+              <p>Choose a voice conversation or a text chat. You can switch modes any time.</p>
+            </section>
+        """, unsafe_allow_html=True)
+        talk_column, chat_column = st.columns(2, gap="medium")
+        with talk_column:
+            st.markdown("""
+                <div class="ai-mode-card voice">
+                  <h3>🎙️ Talk with SnapClass AI</h3>
+                  <p>Speak naturally and see your avatar respond in real time.</p>
+                </div>
+            """, unsafe_allow_html=True)
+            st.button(
+                "Start a voice conversation",
+                key="choose_ai_talk",
+                type="primary",
+                icon=":material/graphic_eq:",
+                width="stretch",
+                on_click=_set_ai_interaction_mode,
+                args=("talk",),
+            )
+        with chat_column:
+            st.markdown("""
+                <div class="ai-mode-card chat">
+                  <h3>💬 Chat with SnapClass AI</h3>
+                  <p>Type questions about topics, course notes, study plans, and class ideas.</p>
+                </div>
+            """, unsafe_allow_html=True)
+            st.button(
+                "Open text chat",
+                key="choose_ai_chat",
+                icon=":material/chat:",
+                width="stretch",
+                on_click=_set_ai_interaction_mode,
+                args=("chat",),
+            )
+
+    if interaction_mode == "talk":
+        st.markdown("""
+            <section class="smart-tutor-hero">
+              <span class="eyebrow">SnapClass AI · Voice studio</span>
+              <h2>Talk it through</h2>
+              <p>Start the conversation when you’re ready. Allow microphone access if your browser asks.</p>
+            </section>
+        """, unsafe_allow_html=True)
+        render_anam_avatar(expanded=True)
+        return
+
+    if interaction_mode != "chat":
+        return
+
+    st.markdown("""
         <section class="smart-tutor-hero">
-          <span class="eyebrow">One hub · two ways to grow</span>
+          <span class="eyebrow">SnapClass AI · Text chat</span>
           <h2>Study a topic or plan a great lesson</h2>
-          <p>Choose a student or teacher desk, then start with a focused idea or ask Abhishekh anything.</p>
+          <p>Choose a student or teacher desk, then start with a focused idea or ask SnapClass AI anything.</p>
         </section>
     """, unsafe_allow_html=True)
 
@@ -127,8 +239,6 @@ def ai_chat_dialog(initial_prompt: str = None, audience: str = None):
             if st.button(label, key=f"hub_{mode.lower().replace(' ', '_')}_{label.lower().replace(' ', '_')}", width="stretch"):
                 selected_prompt = f"{audience_prompt}\n\n{prompt}"
 
-    render_anam_avatar()
-
     if "snapclass_ai_messages" not in st.session_state:
         st.session_state.snapclass_ai_messages = [
             {
@@ -144,7 +254,7 @@ def ai_chat_dialog(initial_prompt: str = None, audience: str = None):
     ):
         st.session_state.last_initial_prompt = pending_prompt
         st.session_state.snapclass_ai_messages.append({"role": "user", "content": pending_prompt})
-        with st.spinner("Abhishekh is thinking..."):
+        with st.spinner("SnapClass AI is thinking..."):
             reply = _request_ai_response(pending_prompt)
             if reply is not None:
                 st.session_state.snapclass_ai_messages.append({"role": "assistant", "content": reply})

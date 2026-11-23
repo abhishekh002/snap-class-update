@@ -7,7 +7,7 @@ from src.components.dialog_upload_note import upload_note_dialog
 from src.components.dialog_blackboard_digitizer import blackboard_digitizer_dialog
 from src.components.dialog_interactive_reader import interactive_reader_dialog
 from src.components.markdown_utils import sanitize_mermaid_blocks
-from src.components.dialog_ai_chat import ai_chat_dialog
+from src.components.dialog_ai_chat import open_ai_learning_dialog
 
 from datetime import datetime, timezone
 
@@ -217,7 +217,7 @@ def teacher_dashboard():
         btn_ai_col, btn_log_col = st.columns(2)
         with btn_ai_col:
             if st.button("Teach with Abhishekh", key="teacher_ai_header_btn", icon=":material/auto_awesome:"):
-                ai_chat_dialog(audience="teacher")
+                open_ai_learning_dialog(audience="teacher")
         with btn_log_col:
             if st.button("Logout", type="secondary", key="teacher_logout"):
                 del st.session_state["teacher_data"]
@@ -359,7 +359,7 @@ def teacher_tab_course_notes():
         st.caption("Turn board photos into shareable notes.")
     with col_ai:
         if st.button("Lesson & Discussion Studio", icon=":material/auto_awesome:", key="btn_teacher_notes_ai", width="stretch"):
-            ai_chat_dialog(audience="teacher")
+            open_ai_learning_dialog(audience="teacher")
         st.caption("Plan lessons, class discussions, and quick quizzes.")
 
     st.divider()

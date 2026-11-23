@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from src.components.header import header_home
 from src.components.footer import footer_home
-from src.components.dialog_ai_chat import ai_chat_dialog
+from src.components.dialog_ai_chat import open_ai_learning_dialog
 from src.ui.base_layout import style_base_layout, style_background_home
 
 @st.dialog("SnapClass AI walkthrough", width="large")
@@ -294,7 +294,7 @@ def home_screen():
             """, unsafe_allow_html=True)
         with hub_action:
             if st.button("Open Study & Teach Hub", key="home_ai_button", icon=":material/auto_awesome:", type="primary", width="stretch"):
-                ai_chat_dialog()
+                open_ai_learning_dialog()
 
     st.markdown(
         """

@@ -2,7 +2,7 @@
 from html import escape
 
 from src.database.notes_db import get_note_download, get_notes_for_student
-from src.components.dialog_ai_chat import ai_chat_dialog
+from src.components.dialog_ai_chat import open_ai_chat_dialog, open_ai_learning_dialog
 from src.components.dialog_interactive_reader import interactive_reader_dialog
 from src.components.markdown_utils import sanitize_mermaid_blocks
 from src.components.gpa_forecaster import render_gpa_forecaster
@@ -119,7 +119,7 @@ def student_dashboard():
                 type="primary",
                 width="stretch",
             ):
-                ai_chat_dialog(audience="student")
+                open_ai_learning_dialog(audience="student")
     try:
         student_notes = get_notes_for_student(student_id)
     except (APIError, PermissionError, RuntimeError) as error:
@@ -515,7 +515,7 @@ def student_dashboard():
         _, c_nai = st.columns([3, 1])
         with c_nai:
             if st.button("Study & Discuss", icon=":material/auto_awesome:", key="student_notes_ai_btn", width="stretch"):
-                ai_chat_dialog(audience="student")
+                open_ai_learning_dialog(audience="student")
 
         if not student_notes:
             st.info("No study notes have been uploaded yet for your enrolled subjects.")
@@ -557,7 +557,7 @@ def student_dashboard():
                                     on_click="ignore",
                                 )
                             if st.button("💡 Ask AI Tutor", key=f"ask_ai_{note['id']}", width="stretch"):
-                                ai_chat_dialog(
+                                open_ai_chat_dialog(
                                     initial_prompt=f"Can you explain the key concepts of '{note['title']}' for the subject '{note['subject_name']}'? Overview: {note.get('description', '')}",
                                     audience="student",
                                 )
