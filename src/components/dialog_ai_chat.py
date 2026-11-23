@@ -1,4 +1,8 @@
+import logging
 import streamlit as st
+from google.genai.errors import APIError
+
+logger = logging.getLogger(__name__)
 from src.ai.agent import ask_snapclass_ai
 from src.components.anam_avatar import render_anam_avatar
 from src.components.markdown_utils import sanitize_mermaid_blocks
@@ -11,6 +15,17 @@ def _request_ai_response(message: str):
     except RuntimeError as error:
         st.error(str(error))
         return None
+    except APIError as error:
+        status_code = getattr(error, "code", None)
+        logger.warning("Gemini tutor request failed with HTTP status %s", status_code)
+        if status_code == 429:
+            return "The AI tutor has reached its Gemini usage limit. Please try again later."
+        if status_code in {500, 502, 503, 504}:
+            return "Gemini is temporarily unavailable. Please try again in a moment."
+        return "Gemini could not complete that response. Check the Google API key and model access."
+    except Exception as error:
+        logger.warning("Unexpected tutor failure (%s)", type(error).__name__)
+        return "I could not complete that response. Please try again."
 
 
 @st.dialog("🤖 SmartClass AI Tutor & Assistant", width="large")

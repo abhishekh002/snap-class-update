@@ -29,21 +29,19 @@ def _session_token() -> str:
     if not api_key:
         raise RuntimeError("Set ANAM_API_KEY in your local .env or Streamlit secrets.")
 
-    voice_id = _setting("ANAM_VOICE_ID")
-    llm_id = _setting("ANAM_LLM_ID")
-    avatar_id = _setting("ANAM_AVATAR_ID", DEFAULT_AVATAR_ID)
-    avatar_model = _setting("ANAM_AVATAR_MODEL", DEFAULT_AVATAR_MODEL)
-    missing = [name for name, value in (("ANAM_VOICE_ID", voice_id), ("ANAM_LLM_ID", llm_id)) if not value]
-    if missing:
-        raise RuntimeError("Set " + " and ".join(missing) + " in your local .env or Streamlit secrets.")
-
-    cached = st.session_state.get("anam_session_token")
-    if cached and cached.get("expires_at", 0) > time.time():
-        return cached["token"]
-
-    base_url = _setting("ANAM_API_BASE", "https://api.anam.ai").rstrip("/")
-    payload = {
-        "personaConfig": {
+    persona_id = _setting("ANAM_PERSONA_ID")
+    if persona_id:
+        # Use the saved Anam persona so its avatar and voice stay in sync with Lab.
+        persona_config = {"personaId": persona_id}
+    else:
+        voice_id = _setting("ANAM_VOICE_ID")
+        llm_id = _setting("ANAM_LLM_ID")
+        avatar_id = _setting("ANAM_AVATAR_ID", DEFAULT_AVATAR_ID)
+        avatar_model = _setting("ANAM_AVATAR_MODEL", DEFAULT_AVATAR_MODEL)
+        missing = [name for name, value in (("ANAM_VOICE_ID", voice_id), ("ANAM_LLM_ID", llm_id)) if not value]
+        if missing:
+            raise RuntimeError("Set " + " and ".join(missing) + " in your local .env or Streamlit secrets.")
+        persona_config = {
             "name": "Abhishekh",
             "avatarId": avatar_id,
             "avatarModel": avatar_model,
@@ -52,7 +50,13 @@ def _session_token() -> str:
             "systemPrompt": SMARTCLASS_SYSTEM_PROMPT
             + " Keep spoken responses concise and conversational.",
         }
-    }
+
+    cached = st.session_state.get("anam_session_token")
+    if cached and cached.get("expires_at", 0) > time.time():
+        return cached["token"]
+
+    base_url = _setting("ANAM_API_BASE", "https://api.anam.ai").rstrip("/")
+    payload = {"personaConfig": persona_config}
     request = Request(
         f"{base_url}/v1/auth/session-token",
         data=json.dumps(payload).encode("utf-8"),
