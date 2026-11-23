@@ -216,7 +216,7 @@ def teacher_dashboard():
     with c_b:
         btn_ai_col, btn_log_col = st.columns(2)
         with btn_ai_col:
-            if st.button("Teach with Abhishekh", key="teacher_ai_header_btn", icon=":material/auto_awesome:"):
+            if st.button("SnapClass AI Studio", key="teacher_ai_header_btn", icon=":material/auto_awesome:"):
                 open_ai_learning_dialog(audience="teacher")
         with btn_log_col:
             if st.button("Logout", type="secondary", key="teacher_logout"):

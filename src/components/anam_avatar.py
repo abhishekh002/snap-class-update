@@ -161,30 +161,23 @@ def _avatar_html(session_token: str) -> str:
     return page.replace("/* ANAM_SDK_BUNDLE */", bundle).replace("/* SESSION_TOKEN */", token_literal)
 
 
-def render_anam_avatar(expanded: bool = False) -> None:
+def render_anam_avatar() -> None:
     st.markdown("""
         <style>
-            .st-key-anam_voice_studio [data-testid="stExpander"] {
+            .st-key-anam_voice_studio {
                 overflow: hidden;
                 border: 1px solid #cfe0dc !important;
                 border-left: 5px solid #36888a !important;
                 border-radius: 17px !important;
                 background: linear-gradient(115deg, #fffefa, #edf6f3) !important;
                 box-shadow: 0 9px 22px rgba(32,58,67,.08);
+                padding: 1rem;
             }
-            .st-key-anam_voice_studio [data-testid="stExpander"] summary {
-                min-height: 3.35rem;
-                padding: .15rem .8rem;
-                transition: background-color .18s ease;
-            }
-            .st-key-anam_voice_studio [data-testid="stExpander"] summary:hover {
-                background: rgba(54,136,138,.07);
-            }
-            .st-key-anam_voice_studio [data-testid="stExpander"] summary p {
+            .st-key-anam_voice_studio h3 {
                 color: #285f61 !important;
-                font-size: .98rem;
+                font-size: 1.05rem;
                 font-weight: 700;
-                letter-spacing: .005em;
+                margin: .1rem 0 .3rem;
             }
             .voice-studio-intro {
                 margin: 0 0 .8rem;
@@ -195,14 +188,14 @@ def render_anam_avatar(expanded: bool = False) -> None:
         </style>
     """, unsafe_allow_html=True)
 
-    with st.container(key="anam_voice_studio"):
-        with st.expander("🎙️ SnapClass Voice Studio", expanded=expanded):
-            st.markdown(
-                '<p class="voice-studio-intro">Speak with SnapClass AI about class topics, course notes, or study plans.</p>',
-                unsafe_allow_html=True,
-            )
-            try:
-                session_token = _session_token()
-                components.html(_avatar_html(session_token), height=470, scrolling=False)
-            except RuntimeError as error:
-                st.info(str(error))
+    with st.container(key="anam_voice_studio", border=True):
+        st.markdown("### 🎙️ SnapClass Voice Studio")
+        st.markdown(
+            '<p class="voice-studio-intro">Speak with SnapClass AI about class topics, course notes, or study plans.</p>',
+            unsafe_allow_html=True,
+        )
+        try:
+            session_token = _session_token()
+            components.html(_avatar_html(session_token), height=470, scrolling=False)
+        except RuntimeError as error:
+            st.info(str(error))

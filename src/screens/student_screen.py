@@ -113,7 +113,7 @@ def student_dashboard():
         _, ai_corner = st.columns([5, 1.35])
         with ai_corner:
             if st.button(
-                "Study with Abhishekh",
+                "SnapClass AI Study Hub",
                 key="student_top_ai_btn",
                 icon=":material/auto_awesome:",
                 type="primary",

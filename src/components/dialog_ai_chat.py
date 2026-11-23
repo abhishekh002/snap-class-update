@@ -188,7 +188,7 @@ def ai_chat_dialog(initial_prompt: str = None, audience: str = None):
               <p>Start the conversation when you’re ready. Allow microphone access if your browser asks.</p>
             </section>
         """, unsafe_allow_html=True)
-        render_anam_avatar(expanded=True)
+        render_anam_avatar()
         return
 
     if interaction_mode != "chat":
