@@ -27,3 +27,6 @@ python-dotenv
 pypdf
 python-docx
 python-pptx
+
+# Zep knowledge graph retrieval
+zep-cloud>=3.0,<4

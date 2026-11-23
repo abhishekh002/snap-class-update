@@ -1,5 +1,6 @@
 import streamlit as st
 from src.ai.agent import ask_snapclass_ai
+from src.components.anam_avatar import render_anam_avatar
 from src.components.markdown_utils import sanitize_mermaid_blocks
 from src.components.tts_player import render_tts_player
 
@@ -56,6 +57,8 @@ def ai_chat_dialog(initial_prompt: str = None):
         </section>
     """, unsafe_allow_html=True)
 
+    render_anam_avatar()
+
     if "snapclass_ai_messages" not in st.session_state:
         st.session_state.snapclass_ai_messages = [
             {
@@ -64,7 +67,6 @@ def ai_chat_dialog(initial_prompt: str = None):
             }
         ]
 
-    # If an initial prompt was passed (e.g. from a specific note)
     if initial_prompt and (
         "last_initial_prompt" not in st.session_state
         or st.session_state.last_initial_prompt != initial_prompt
@@ -76,7 +78,6 @@ def ai_chat_dialog(initial_prompt: str = None):
             if reply is not None:
                 st.session_state.snapclass_ai_messages.append({"role": "assistant", "content": reply})
 
-    # Render chat container
     chat_container = st.container(height=380)
     with chat_container:
         for index, msg in enumerate(st.session_state.snapclass_ai_messages):
@@ -85,7 +86,6 @@ def ai_chat_dialog(initial_prompt: str = None):
                 if msg["role"] == "assistant":
                     render_tts_player(msg["content"], f"ai_chat_{index}")
 
-    # Chat input
     user_input = st.chat_input("Type your question here...")
     if user_input:
         st.session_state.snapclass_ai_messages.append({"role": "user", "content": user_input})

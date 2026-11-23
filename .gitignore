@@ -14,3 +14,5 @@ artifacts/diagram_tour/narration-*.wav
 artifacts/diagram_tour/*.ass
 artifacts/diagram_tour/concat-list.txt
 artifacts/diagram_tour/diagram_tour_metadata.json
+
+node_modules/
