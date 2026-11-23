@@ -66,6 +66,49 @@ def home_screen():
                 font-size: 1.05rem;
                 line-height: 1.65;
             }
+            .st-key-home_learning_hub {
+                margin: 1.5rem 0 1rem;
+                padding: 1.2rem 1.4rem;
+                border: 1px solid #cfdfd3;
+                border-left: 5px solid #36888a;
+                border-radius: 18px;
+                background: linear-gradient(115deg,#fffefa,#e8f4f1 78%,#e2eee6);
+                box-shadow: 0 10px 25px rgba(32,58,67,.07);
+            }
+            .home-hub-kicker {
+                margin: 0 0 .3rem;
+                color: #287477;
+                font-size: .68rem;
+                font-weight: 700;
+                letter-spacing: .13em;
+                text-transform: uppercase;
+            }
+            .home-hub-title {
+                margin: 0 0 .25rem;
+                color: #26382e;
+                font-size: 1.3rem;
+                font-weight: 700;
+            }
+            .home-hub-copy {
+                margin: 0;
+                color: #65746a;
+                line-height: 1.5;
+            }
+            .home-hub-tags {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-top: .65rem;
+            }
+            .home-hub-tags span {
+                padding: 4px 8px;
+                border: 1px solid #d2e5e2;
+                border-radius: 999px;
+                background: #f4faf8;
+                color: #52745c;
+                font-size: .72rem;
+                font-weight: 600;
+            }
             .portal-copy .portal-kicker {
                 display: inline-flex;
                 margin: 0 0 .7rem;
@@ -240,26 +283,31 @@ def home_screen():
             st.session_state['login_type']='teacher'
             st.rerun()
 
-    footer_home()
+    with st.container(key="home_learning_hub"):
+        hub_copy, hub_action = st.columns([3, 1], vertical_alignment="center", gap="large")
+        with hub_copy:
+            st.markdown("""
+                <p class="home-hub-kicker">SmartClass AI · Learning studio</p>
+                <p class="home-hub-title">Study together. Teach with fresh ideas.</p>
+                <p class="home-hub-copy">Students can unpack topics, make study plans, and practice. Teachers can build lessons, discussions, and quick quizzes.</p>
+                <div class="home-hub-tags"><span>Topic coach</span><span>Study planner</span><span>Lesson ideas</span><span>Class discussion</span></div>
+            """, unsafe_allow_html=True)
+        with hub_action:
+            if st.button("Open Study & Teach Hub", key="home_ai_button", icon=":material/auto_awesome:", type="primary", width="stretch"):
+                ai_chat_dialog()
 
     st.markdown(
         """
         <style>
-            .st-key-home_tutorial_button,
-            .st-key-home_ai_button {
+            .st-key-home_tutorial_button {
                 position: fixed;
                 right: 1.5rem;
                 z-index: 9999;
-                width: 10rem;
             }
             .st-key-home_tutorial_button {
                 bottom: 5.5rem;
             }
-            .st-key-home_ai_button {
-                bottom: 1.5rem;
-            }
-            .st-key-home_tutorial_button button,
-            .st-key-home_ai_button button {
+            .st-key-home_tutorial_button button {
                 border-radius: 999px !important;
                 box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
             }
@@ -269,6 +317,5 @@ def home_screen():
     )
     if st.button("Watch tutorial", key="home_tutorial_button", icon=":material/play_circle:"):
         _show_home_tutorial()
-    if st.button("AI Assistant", key="home_ai_button", icon=":material/smart_toy:"):
-        ai_chat_dialog()
+    footer_home()
 

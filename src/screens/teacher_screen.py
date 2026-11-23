@@ -216,8 +216,8 @@ def teacher_dashboard():
     with c_b:
         btn_ai_col, btn_log_col = st.columns(2)
         with btn_ai_col:
-            if st.button("🤖 AI Assistant", key="teacher_ai_header_btn"):
-                ai_chat_dialog()
+            if st.button("Teach with Abhishekh", key="teacher_ai_header_btn", icon=":material/auto_awesome:"):
+                ai_chat_dialog(audience="teacher")
         with btn_log_col:
             if st.button("Logout", type="secondary", key="teacher_logout"):
                 del st.session_state["teacher_data"]
@@ -358,9 +358,9 @@ def teacher_tab_course_notes():
             blackboard_digitizer_dialog()
         st.caption("Turn board photos into shareable notes.")
     with col_ai:
-        if st.button("SmartClass AI Tutor & Assistant", icon=":material/auto_awesome:", key="btn_teacher_notes_ai", width="stretch"):
-            ai_chat_dialog()
-        st.caption("Explain topics and answer study questions.")
+        if st.button("Lesson & Discussion Studio", icon=":material/auto_awesome:", key="btn_teacher_notes_ai", width="stretch"):
+            ai_chat_dialog(audience="teacher")
+        st.caption("Plan lessons, class discussions, and quick quizzes.")
 
     st.divider()
     try:

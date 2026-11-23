@@ -28,8 +28,8 @@ def _request_ai_response(message: str):
         return "I could not complete that response. Please try again."
 
 
-@st.dialog("🤖 SmartClass AI Tutor & Assistant", width="large")
-def ai_chat_dialog(initial_prompt: str = None):
+@st.dialog("🎓 SmartClass Study & Teach Hub", width="large")
+def ai_chat_dialog(initial_prompt: str = None, audience: str = None):
     st.markdown("""
         <style>
             .smart-tutor-hero {
@@ -63,14 +63,69 @@ def ai_chat_dialog(initial_prompt: str = None):
             .stDialog [data-testid="stChatInput"] textarea {
                 border-color: #9aaf9c; border-radius: 14px;
             }
+            .hub-path-copy {
+                margin: .2rem 0 .7rem;
+                color: #536663;
+                font-size: .9rem;
+            }
+            .hub-prompt-caption {
+                margin: .8rem 0 .25rem;
+                color: #385844;
+                font-size: .78rem;
+                font-weight: 700;
+                letter-spacing: .08em;
+                text-transform: uppercase;
+            }
+            .stDialog [data-testid="stHorizontalBlock"] .stButton > button {
+                min-height: 3.1rem;
+                white-space: normal;
+                line-height: 1.2;
+            }
             @media (max-width: 640px) { .smart-tutor-hero { padding: 18px; } }
         </style>
         <section class="smart-tutor-hero">
-          <span class="eyebrow">Your learning companion</span>
-          <h2>Learn at your pace</h2>
-          <p>Ask about class topics, course notes, attendance, or study plans.</p>
+          <span class="eyebrow">One hub · two ways to grow</span>
+          <h2>Study a topic or plan a great lesson</h2>
+          <p>Choose a student or teacher desk, then start with a focused idea or ask Abhishekh anything.</p>
         </section>
     """, unsafe_allow_html=True)
+
+    login_role = audience or st.session_state.get("login_type") or st.session_state.get("user_role")
+    default_mode = "Teacher Desk" if login_role == "teacher" else "Student Desk"
+    mode = st.radio(
+        "Choose your desk",
+        ["Student Desk", "Teacher Desk"],
+        index=1 if default_mode == "Teacher Desk" else 0,
+        horizontal=True,
+        key=f"smartclass_ai_desk_{default_mode.lower().replace(' ', '_')}",
+    )
+
+    if mode == "Student Desk":
+        st.markdown('<p class="hub-path-copy">Understand a class topic, review notes, make a study plan, or practice with a quiz.</p>', unsafe_allow_html=True)
+        prompt_actions = [
+            ("Explain a topic", "Help me understand a topic. Ask me which topic and my class level, then explain it step by step with an example and a quick check question."),
+            ("Make a study plan", "Help me make a realistic study plan. Ask what subject or exam I am preparing for and how much time I have."),
+            ("Quiz me", "Quiz me on a topic I choose. Ask one question at a time, wait for my answer, then explain it simply."),
+            ("Review my notes", "Help me review my uploaded course notes. Ask which subject or note I want to study, then summarize the key ideas and ask a practice question."),
+        ]
+        audience_prompt = "Act as a friendly student tutor. Explain ideas clearly, encourage questions, and check understanding without giving away quiz answers too early."
+    else:
+        st.markdown('<p class="hub-path-copy">Prepare lessons, shape class discussions, make quick checks for understanding, or simplify a topic.</p>', unsafe_allow_html=True)
+        prompt_actions = [
+            ("Plan a lesson", "Help me plan a lesson. Ask for the class level, topic, and lesson duration, then suggest objectives, activities, and a closing check."),
+            ("Start a discussion", "Help me create an engaging class discussion. Ask for the subject, topic, and class level, then suggest an opening question and follow-up prompts."),
+            ("Create a quick quiz", "Help me create a short quiz for my class. Ask for the topic and class level, then provide questions and a separate answer key."),
+            ("Simplify a topic", "Help me explain a difficult topic to my students. Ask for the topic and class level, then give a clear explanation and an example."),
+        ]
+        audience_prompt = "Act as a practical teaching partner. Keep suggestions classroom-ready, age-appropriate, and easy to adapt."
+
+    st.markdown('<div class="hub-prompt-caption">Start with a quick action</div>', unsafe_allow_html=True)
+    prompt_columns = st.columns(4, gap="small")
+    selected_prompt = None
+    for column, (label, prompt) in zip(prompt_columns, prompt_actions):
+        with column:
+            if st.button(label, key=f"hub_{mode.lower().replace(' ', '_')}_{label.lower().replace(' ', '_')}", width="stretch"):
+                selected_prompt = f"{audience_prompt}\n\n{prompt}"
 
     render_anam_avatar()
 
@@ -82,14 +137,15 @@ def ai_chat_dialog(initial_prompt: str = None):
             }
         ]
 
-    if initial_prompt and (
+    pending_prompt = selected_prompt or initial_prompt
+    if pending_prompt and (
         "last_initial_prompt" not in st.session_state
-        or st.session_state.last_initial_prompt != initial_prompt
+        or st.session_state.last_initial_prompt != pending_prompt
     ):
-        st.session_state.last_initial_prompt = initial_prompt
-        st.session_state.snapclass_ai_messages.append({"role": "user", "content": initial_prompt})
-        with st.spinner("AI Tutor is thinking..."):
-            reply = _request_ai_response(initial_prompt)
+        st.session_state.last_initial_prompt = pending_prompt
+        st.session_state.snapclass_ai_messages.append({"role": "user", "content": pending_prompt})
+        with st.spinner("Abhishekh is thinking..."):
+            reply = _request_ai_response(pending_prompt)
             if reply is not None:
                 st.session_state.snapclass_ai_messages.append({"role": "assistant", "content": reply})
 

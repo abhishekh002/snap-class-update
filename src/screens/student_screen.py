@@ -113,13 +113,13 @@ def student_dashboard():
         _, ai_corner = st.columns([5, 1.35])
         with ai_corner:
             if st.button(
-                "Ask AI Tutor",
+                "Study with Abhishekh",
                 key="student_top_ai_btn",
                 icon=":material/auto_awesome:",
                 type="primary",
                 width="stretch",
             ):
-                ai_chat_dialog()
+                ai_chat_dialog(audience="student")
     try:
         student_notes = get_notes_for_student(student_id)
     except (APIError, PermissionError, RuntimeError) as error:
@@ -514,8 +514,8 @@ def student_dashboard():
         """, unsafe_allow_html=True)
         _, c_nai = st.columns([3, 1])
         with c_nai:
-            if st.button("🤖 Ask AI Tutor", icon=":material/smart_toy:", key="student_notes_ai_btn", width="stretch"):
-                ai_chat_dialog()
+            if st.button("Study & Discuss", icon=":material/auto_awesome:", key="student_notes_ai_btn", width="stretch"):
+                ai_chat_dialog(audience="student")
 
         if not student_notes:
             st.info("No study notes have been uploaded yet for your enrolled subjects.")
@@ -557,7 +557,10 @@ def student_dashboard():
                                     on_click="ignore",
                                 )
                             if st.button("💡 Ask AI Tutor", key=f"ask_ai_{note['id']}", width="stretch"):
-                                ai_chat_dialog(initial_prompt=f"Can you explain the key concepts of '{note['title']}' for the subject '{note['subject_name']}'? Overview: {note.get('description', '')}")
+                                ai_chat_dialog(
+                                    initial_prompt=f"Can you explain the key concepts of '{note['title']}' for the subject '{note['subject_name']}'? Overview: {note.get('description', '')}",
+                                    audience="student",
+                                )
 
     footer_dashboard()
 def student_screen():
