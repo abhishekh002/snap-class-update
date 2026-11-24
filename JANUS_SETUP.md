@@ -4,19 +4,26 @@ SnapClass AI chat can use DeepSeek Janus-Pro-1B to answer questions about an upl
 
 ## Install locally
 
-Run these commands from the SnapClass project root, using the same Python environment as the app:
+Run these commands from the SnapClass project root in PowerShell. Use the exact `.venv` interpreter for installation and launch so `pip` and Streamlit cannot target different Python environments. If the `Janus` folder is missing, clone it first:
 
-```bash
+```powershell
 git clone https://github.com/deepseek-ai/Janus.git
-python -m pip install -r requirements-janus.txt
 ```
+
+Then install the runtime dependencies into the app environment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-janus.txt
+```
+
+The app imports the checked-out Janus source directly, so an editable package build is not required.
 
 The Janus install file pins Transformers below version 5 because Janus currently requires the Transformers 4 API. Then restart Streamlit. The first image question downloads the `deepseek-ai/Janus-Pro-1B` model weights and loads them into memory. The model stays loaded for later questions while the app process is running. A CUDA GPU is recommended; CPU can run the model but may be slow. To use a different compatible Janus checkpoint, set `JANUS_MODEL` in the server environment (default: `deepseek-ai/Janus-Pro-1B`).
 
 On this computer, use the newly created environment because the old `venv` points to a removed Python 3.11 installation:
 
 ```powershell
-.\.venv\Scripts\streamlit.exe run app.py
+ .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
 This environment currently has CPU-only PyTorch. Janus inference will run on the CPU until a CUDA-enabled PyTorch build is installed. The model weights have not been downloaded yet; Janus downloads them the first time someone asks a question about an image.
