@@ -2,12 +2,16 @@ import os
 import io
 import json
 import asyncio
+import logging
 import streamlit as st
 from google import genai
+from google.genai import errors
 from google.genai import types
 
 
 MAX_EXPLANATION_INPUT_CHARS = 6000
+logger = logging.getLogger(__name__)
+GEMINI_FALLBACK_MODEL = "gemini-3.5-flash-lite"
 
 def _get_client():
     api_key = None
@@ -22,6 +26,27 @@ def _get_client():
         raise RuntimeError("Configure GOOGLE_API_KEY in Streamlit secrets or environment variables.")
     return genai.Client(api_key=api_key)
 
+
+async def _generate_with_gemini_fallback(client, contents, config=None):
+    """Try the preferred model, then a supported Gemini fallback on transient errors."""
+    for index, model in enumerate(("gemini-3.1-flash-lite", GEMINI_FALLBACK_MODEL)):
+        try:
+            return await client.aio.models.generate_content(
+                model=model,
+                contents=contents,
+                config=config,
+            )
+        except errors.APIError as error:
+            status_code = getattr(error, "code", None)
+            if index == 1 or status_code not in {429, 500, 502, 503, 504}:
+                raise
+            logger.warning(
+                "Gemini model %s returned HTTP %s; retrying with %s.",
+                model,
+                status_code,
+                GEMINI_FALLBACK_MODEL,
+            )
+
 async def _digitize_async(image_bytes: bytes, mime_type: str = "image/jpeg") -> str:
     client = _get_client()
     prompt = """You are an expert academic digitizer for classroom blackboards and whiteboards.
@@ -33,9 +58,9 @@ Convert this classroom blackboard/whiteboard photo into a clean, comprehensive s
 5. Add a short "Key Concepts Summary" section at the end.
 Be accurate, pedagogical, and clean."""
 
-    res = await client.aio.models.generate_content(
-        model="gemini-flash-lite-latest",
-        contents=[
+    res = await _generate_with_gemini_fallback(
+        client,
+        [
             types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
             prompt,
         ],
@@ -60,9 +85,9 @@ Explain these notes in simple terms. Keep it concise: state the main idea, use 3
 Notes:
 {note_text}"""
 
-    res = await client.aio.models.generate_content(
-        model="gemini-3.1-flash-lite",
-        contents=[prompt],
+    res = await _generate_with_gemini_fallback(
+        client,
+        [prompt],
         config=types.GenerateContentConfig(
             max_output_tokens=500,
             thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),
@@ -90,10 +115,7 @@ Return ONLY a valid JSON array of objects without markdown formatting or code bl
 Notes:
 {note_text}"""
 
-    res = await client.aio.models.generate_content(
-        model="gemini-flash-lite-latest",
-        contents=[prompt],
-    )
+    res = await _generate_with_gemini_fallback(client, [prompt])
     raw = (res.text or "").strip()
     if "```json" in raw:
         raw = raw.split("```json", 1)[1].split("```", 1)[0].strip()
