@@ -284,5 +284,6 @@ def style_base_layout():
                 border-radius: .75rem !important;
                 background-color: #ffffff !important;
             }
+
         </style>
     """, unsafe_allow_html=True)

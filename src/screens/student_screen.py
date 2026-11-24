@@ -50,32 +50,29 @@ def student_dashboard():
     student_registration = escape(
         str(student_data.get("registration_number") or "Pending setup")
     )
-    logo_column, home_column = st.columns([3, 1], vertical_alignment="center")
-    with logo_column:
-        st.markdown(f"""
-            <div style="display:flex; align-items:center; min-height:74px;">
-              <img src="{LOGO_DATA_URI}" alt="SmartClass AI"
-                style="display:block; width:min(360px,100%); height:auto;" />
-            </div>
-        """, unsafe_allow_html=True)
-    with home_column:
-        if st.button("Back to Home", type="secondary", key="loginbackbtn", width="stretch", icon=":material/home:"):
-            st.session_state["is_logged_in"] = False
-            st.session_state["user_role"] = None
-            st.session_state.pop("student_data", None)
-            st.rerun()
-
     st.markdown("""
         <style>
+            .stApp [data-testid="stMainBlockContainer"] {
+                box-sizing:border-box;
+                max-width:1240px !important;
+            }
             .st-key-student_learning_journey {
                 box-sizing: border-box;
-                width: 100%;
-                margin: 0 0 1rem;
+                width: min(1200px,calc(100% - 2rem));
+                margin: 1.25rem auto 1rem;
                 padding: 24px 28px 18px;
                 border: 1px solid #31545b;
                 border-radius: 22px;
                 background: linear-gradient(130deg,#203a43,#315b54 72%,#3c6658);
                 box-shadow: 0 14px 30px rgba(32,58,67,.18);
+            }
+            .st-key-student_dashboard_header { width:100%; margin-bottom:.5rem; }
+            .st-key-student_dashboard_header [data-testid="stHorizontalBlock"] { align-items:center; }
+            .st-key-student_dashboard_header img[alt="SmartClass AI"] {
+                display:block; width:min(400px,100%); height:auto;
+            }
+            .st-key-student_dashboard_header [data-testid="stColumn"]:has(button) {
+                display:flex; justify-content:flex-end;
             }
             .st-key-student_learning_journey [data-testid="stMarkdownContainer"] p {
                 color: #e1ebe3 !important;
@@ -85,9 +82,29 @@ def student_dashboard():
                 border-color: #d8ef9b !important;
                 color: #203a43 !important;
             }
+            .st-key-student_dashboard_nav {
+                box-sizing:border-box;
+                width:min(1136px,calc(100% - 2rem));
+                margin-inline:auto;
+            }
+            @media (max-width:640px) {
+                .st-key-student_learning_journey { margin:.75rem auto 1rem; padding:16px; border-radius:20px; }
+                .st-key-student_dashboard_header img[alt="SmartClass AI"] { width:min(300px,100%); }
+                .st-key-student_dashboard_header [data-testid="stHorizontalBlock"] { gap:.5rem; }
+            }
         </style>
     """, unsafe_allow_html=True)
     with st.container(key="student_learning_journey"):
+        with st.container(key="student_dashboard_header"):
+            logo_column, home_column = st.columns([3, 1], vertical_alignment="center", gap="large")
+            with logo_column:
+                st.markdown(f"<img src=\"{LOGO_DATA_URI}\" alt=\"SmartClass AI\" />", unsafe_allow_html=True)
+            with home_column:
+                if st.button("Back to Home", type="secondary", key="student_dashboard_back_home", width="stretch", icon=":material/home:"):
+                    st.session_state["is_logged_in"] = False
+                    st.session_state["user_role"] = None
+                    st.session_state.pop("student_data", None)
+                    st.rerun()
         st.markdown(f"""
             <div style="color:#d8ef9b; font-size:.68rem; font-weight:700;
                 letter-spacing:.15em;">YOUR LEARNING JOURNEY</div>
@@ -216,13 +233,14 @@ def student_dashboard():
             st.session_state[state_key] = section
             st.rerun()
 
-    nav_subjects, nav_assessments, nav_learning = st.columns(3, gap="small")
-    with nav_subjects:
-        _student_nav_button("Enrolled Subjects", "subjects", main_nav_key, st.session_state[main_nav_key], ":material/menu_book:")
-    with nav_assessments:
-        _student_nav_button("Assessments", "assessments", main_nav_key, st.session_state[main_nav_key], ":material/assignment:")
-    with nav_learning:
-        _student_nav_button("Learning Hub", "learning", main_nav_key, st.session_state[main_nav_key], ":material/auto_stories:")
+    with st.container(key="student_dashboard_nav"):
+        nav_subjects, nav_assessments, nav_learning = st.columns(3, gap="small")
+        with nav_subjects:
+            _student_nav_button("Enrolled Subjects", "subjects", main_nav_key, st.session_state[main_nav_key], ":material/menu_book:")
+        with nav_assessments:
+            _student_nav_button("Assessments", "assessments", main_nav_key, st.session_state[main_nav_key], ":material/assignment:")
+        with nav_learning:
+            _student_nav_button("Learning Hub", "learning", main_nav_key, st.session_state[main_nav_key], ":material/auto_stories:")
 
     if st.session_state[main_nav_key] == "learning":
         learning_subject_nodes = get_students_subjects(student_id)
@@ -571,33 +589,27 @@ def student_screen():
         student_dashboard()
         return
 
-    col1, col2 = st.columns([3, 1], vertical_alignment="center", gap="large")
-    with col1:
-        st.markdown(f"""
-            <div style="display:flex;align-items:center;justify-content:flex-start;
-                min-height:74px;width:100%;">
-              <img src="{LOGO_DATA_URI}" alt="SmartClass AI"
-                style="display:block;width:min(380px,100%);height:auto;margin:0;" />
-            </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        if st.button(
-            "Back to Home",
-            type="secondary",
-            key="loginbackbtn",
-        ):
-            st.session_state["login_type"] = None
-            st.rerun()
-
     st.markdown("""
         <style>
+            .st-key-student_auth_panel {
+                box-sizing:border-box;
+                width:min(1200px,calc(100% - 2rem));
+                margin:1.25rem auto 1.4rem;
+                padding:1rem clamp(1rem,3vw,2rem) 1.7rem;
+                border:1px solid #dce1d6;
+                border-radius:30px;
+                background:linear-gradient(125deg,#e6ecdf,#dbe6d5 62%,#e8eadc);
+                box-shadow:0 18px 42px rgba(48,66,51,.08);
+            }
+            .st-key-student_auth_header { width:100%; margin:0 auto .25rem; }
+            .st-key-student_auth_header [data-testid="stHorizontalBlock"] { align-items:center; }
+            .st-key-student_auth_header img[alt="SmartClass AI"] { display:block; width:min(400px,100%); height:auto; }
+            .st-key-student_auth_header [data-testid="stColumn"]:has(button) { display:flex; justify-content:flex-end; }
             .face-login-hero {
-                margin: 1rem 0 1.2rem;
-                padding: 1.45rem 1.6rem;
-                border: 1px solid #dce1d6;
-                border-radius: 22px;
-                background: linear-gradient(125deg, #e6ecdf, #dbe6d5 62%, #e8eadc);
-                box-shadow: 0 12px 30px rgba(48,66,51,.07);
+                box-sizing:border-box;
+                width:100%;
+                margin:0 auto;
+                padding:1rem 0 1.2rem;
                 text-align: center;
             }
             .face-login-hero .eyebrow {
@@ -619,8 +631,9 @@ def student_screen():
                 line-height: 1.55;
             }
             .st-key-face-login-camera {
-                max-width: 720px;
-                margin: 0 auto;
+                box-sizing:border-box;
+                width:min(1136px,100%);
+                margin:0 auto;
                 padding: 1rem 1.25rem .65rem;
                 border: 1px solid #dce1d6;
                 border-radius: 18px;
@@ -628,22 +641,36 @@ def student_screen():
                 box-shadow: 0 8px 24px rgba(48,66,51,.055);
             }
             @media (max-width: 640px) {
-                .face-login-hero { padding: 1.15rem; }
+                .st-key-student_auth_panel { margin:.75rem auto 1rem; padding:.75rem 1rem 1.2rem; border-radius:22px; }
+                .st-key-student_auth_header img[alt="SmartClass AI"] { width:min(300px,100%); }
+                .st-key-student_auth_header [data-testid="stHorizontalBlock"] { gap:.5rem; }
+                .face-login-hero { padding:.8rem 0 1rem; }
                 .st-key-face-login-camera { padding: .8rem; }
             }
         </style>
-        <section class="face-login-hero">
-          <span class="eyebrow">Student access</span>
-          <h1>Sign in with Face ID</h1>
-          <p>Center your face in the camera to securely open your student workspace.</p>
-        </section>
     """, unsafe_allow_html=True)
 
     show_registration = False
-    with st.container(key="face-login-camera"):
-        st.markdown("**Ready when you are**")
-        st.caption("Allow camera access, look toward the camera, then capture a clear photo.")
-        photo = st.camera_input("Position your face in the center")
+    with st.container(key="student_auth_panel"):
+        with st.container(key="student_auth_header"):
+            logo_col, home_col = st.columns([3, 1], vertical_alignment="center", gap="large")
+            with logo_col:
+                st.markdown(f"<img src=\"{LOGO_DATA_URI}\" alt=\"SmartClass AI\" />", unsafe_allow_html=True)
+            with home_col:
+                if st.button("Back to Home", type="secondary", key="student_face_back_home", icon=":material/home:", width="stretch"):
+                    st.session_state["login_type"] = None
+                    st.rerun()
+        st.markdown("""
+            <section class="face-login-hero">
+              <span class="eyebrow">Student access</span>
+              <h1>Sign in with Face ID</h1>
+              <p>Center your face in the camera to securely open your student workspace.</p>
+            </section>
+        """, unsafe_allow_html=True)
+        with st.container(key="face-login-camera"):
+            st.markdown("**Ready when you are**")
+            st.caption("Allow camera access, look toward the camera, then capture a clear photo.")
+            photo = st.camera_input("Position your face in the center")
 
     if photo is not None:
         image = np.array(Image.open(photo))

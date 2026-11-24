@@ -7,6 +7,7 @@ __pycache__/
 dist/
 venv/
 .venv/
+.pip-tmp/
 tmp/
 repomix-output.xml
 artifacts/diagram_tour/scene-*.mp4
@@ -16,3 +17,4 @@ artifacts/diagram_tour/concat-list.txt
 artifacts/diagram_tour/diagram_tour_metadata.json
 
 node_modules/
+Janus/

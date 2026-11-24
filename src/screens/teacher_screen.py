@@ -5,7 +5,7 @@ from html import escape
 from src.database.notes_db import get_note_download, get_notes_for_teacher, delete_note
 from src.components.dialog_upload_note import upload_note_dialog
 from src.components.dialog_blackboard_digitizer import blackboard_digitizer_dialog
-from src.components.dialog_interactive_reader import interactive_reader_dialog
+from src.components.assessment_flow import render_assessment_tab
 from src.components.markdown_utils import sanitize_mermaid_blocks
 from src.components.dialog_ai_chat import open_ai_learning_dialog
 
@@ -19,7 +19,7 @@ from src.components.footer import footer_dashboard
 from src.components.dialog_create_subject import create_subject_dialog
 from src.ui.base_layout import style_background_dashboard, style_base_layout
 
-from src.components.header import LOGO_DATA_URI, header_dashboard
+from src.components.header import LOGO_DATA_URI
 
 from src.database.db import (
     check_teacher_exists,
@@ -167,16 +167,33 @@ def teacher_dashboard():
         current_tab = "take_attendance"
         st.session_state.current_teacher_tab = current_tab
 
-    header_dashboard()
     st.markdown("""
         <style>
+            .st-key-teacher_dashboard_panel {
+                box-sizing:border-box;
+                width:min(1200px,calc(100% - 2rem));
+                margin:1.25rem auto 1rem;
+                padding:1rem clamp(1rem,3vw,2rem) 1.6rem;
+                border:1px solid #dce1d6;
+                border-radius:30px;
+                background:linear-gradient(125deg,#e6ecdf,#dbe6d5 62%,#e8eadc);
+                box-shadow:0 18px 42px rgba(48,66,51,.08);
+            }
+            .st-key-teacher_dashboard_topbar { width:100%; }
+            .st-key-teacher_dashboard_topbar [data-testid="stHorizontalBlock"] { align-items:center; }
+            .st-key-teacher_dashboard_topbar img[alt="SmartClass AI logo"] {
+                display:block; width:min(400px,100%); height:auto;
+            }
+            .st-key-teacher_dashboard_topbar [data-testid="stColumn"]:has(button) {
+                display:flex; justify-content:flex-end;
+            }
             .teacher-welcome {
-                margin: .8rem 0 1.15rem;
-                padding: 1.45rem 1.7rem;
-                border: 1px solid #dce1d6;
-                border-radius: 22px;
-                background: linear-gradient(125deg, #e6ecdf, #dbe6d5 62%, #e8eadc);
-                box-shadow: 0 12px 30px rgba(48,66,51,.07);
+                box-sizing:border-box;
+                width:100%;
+                margin:1rem auto 0;
+                padding:1rem 0 0;
+                border-top:1px solid rgba(56,88,68,.16);
+                text-align:left;
             }
             .teacher-welcome .eyebrow {
                 color: #65746a;
@@ -196,34 +213,45 @@ def teacher_dashboard():
                 color: #526457 !important;
                 line-height: 1.55;
             }
+            .st-key-teacher_dashboard_tabs,
+            .st-key-teacher_dashboard_content {
+                box-sizing:border-box;
+                width:min(1136px,calc(100% - 2rem));
+                margin-inline:auto;
+            }
             @media (max-width: 640px) {
-                .teacher-welcome { padding: 1.15rem; }
+                .st-key-teacher_dashboard_panel { margin:.75rem auto 1rem; padding:.75rem 1rem 1.2rem; border-radius:22px; }
+                .st-key-teacher_dashboard_topbar img[alt="SmartClass AI logo"] { width:min(300px,100%); }
+                .st-key-teacher_dashboard_topbar [data-testid="stHorizontalBlock"] { gap:.5rem; }
+                .teacher-welcome { padding:.8rem 0 0; }
+                .st-key-teacher_dashboard_topbar [data-testid="stColumn"]:has(button) .stButton > button { padding-inline:.5rem !important; }
             }
         </style>
     """, unsafe_allow_html=True)
     teacher_name = escape(str(teacher.get("name") or "Teacher"))
-    st.markdown(f"""
-        <section class="teacher-welcome">
-          <span class="eyebrow">Teacher workspace</span>
-          <h1>Welcome back, {teacher_name}</h1>
-          <p>Take attendance, manage your classes, and keep learning on track.</p>
-        </section>
-    """, unsafe_allow_html=True)
-
-    c_w, c_b = st.columns([2, 1], vertical_alignment="center")
-    with c_w:
-        st.caption("Quick actions")
-    with c_b:
-        btn_ai_col, btn_log_col = st.columns(2)
-        with btn_ai_col:
-            if st.button("SnapClass AI Studio", key="teacher_ai_header_btn", icon=":material/auto_awesome:"):
-                open_ai_learning_dialog(audience="teacher")
-        with btn_log_col:
-            if st.button("Logout", type="secondary", key="teacher_logout"):
-                del st.session_state["teacher_data"]
-                st.session_state["teacher_login_type"] = "login"
-                st.session_state.pop("current_teacher_tab", None)
-                st.rerun()
+    with st.container(key="teacher_dashboard_panel"):
+        with st.container(key="teacher_dashboard_topbar"):
+            logo_col, action_col = st.columns([3, 2], vertical_alignment="center", gap="large")
+            with logo_col:
+                st.markdown(f"<img src=\"{LOGO_DATA_URI}\" alt=\"SmartClass AI logo\" />", unsafe_allow_html=True)
+            with action_col:
+                btn_ai_col, btn_log_col = st.columns(2, gap="small")
+                with btn_ai_col:
+                    if st.button("AI Studio", key="teacher_ai_header_btn", icon=":material/auto_awesome:", width="stretch"):
+                        open_ai_learning_dialog(audience="teacher")
+                with btn_log_col:
+                    if st.button("Logout", type="secondary", key="teacher_logout", width="stretch"):
+                        del st.session_state["teacher_data"]
+                        st.session_state["teacher_login_type"] = "login"
+                        st.session_state.pop("current_teacher_tab", None)
+                        st.rerun()
+        st.markdown(f"""
+            <section class="teacher-welcome">
+              <span class="eyebrow">Teacher workspace</span>
+              <h1>Welcome back, {teacher_name}</h1>
+              <p>Take attendance, manage your classes, and keep learning on track.</p>
+            </section>
+        """, unsafe_allow_html=True)
 
     st.markdown("""
         <style>
@@ -257,36 +285,38 @@ def teacher_dashboard():
         </style>
     """, unsafe_allow_html=True)
 
-    tab1, tab2, tab3, tab4 = st.columns(4, gap="small")
-    with tab1:
-        type1 = "primary" if st.session_state.current_teacher_tab == "take_attendance" else 'tertiary'
-        if st.button("Take Attendance", width="stretch", type=type1, icon=":material/fact_check:", key="take_attendance"):
-            st.session_state.current_teacher_tab = "take_attendance"
-            st.rerun()
-    with tab2:
-        type2 = "primary" if st.session_state.current_teacher_tab == "manage_subjects" else 'tertiary'
-        if st.button("Manage Subjects", width="stretch", type=type2, icon=":material/menu_book:", key="manage_subjects"):
-            st.session_state.current_teacher_tab = "manage_subjects"
-            st.rerun()
-    with tab3:
-        type3 = "primary" if st.session_state.current_teacher_tab == "attendance_records" else 'tertiary'
-        if st.button("Attendance Records", width="stretch", type=type3, icon=":material/assignment:", key="attendance_records"):
-            st.session_state.current_teacher_tab = "attendance_records"
-            st.rerun()
-    with tab4:
-        type4 = "primary" if st.session_state.current_teacher_tab == "course_notes" else 'tertiary'
-        if st.button("Course Notes", width="stretch", type=type4, icon=":material/folder_shared:", key="course_notes"):
-            st.session_state.current_teacher_tab = "course_notes"
-            st.rerun()
-    st.divider()
-    if st.session_state.current_teacher_tab == "take_attendance":
-        teacher_tab_take_attendance()
-    if st.session_state.current_teacher_tab == "manage_subjects":
-        teacher_tab_manage_subjects()
-    if st.session_state.current_teacher_tab == "attendance_records":
-        teacher_tab_attendance_records()
-    if st.session_state.current_teacher_tab == "course_notes":
-        teacher_tab_course_notes()
+    with st.container(key="teacher_dashboard_tabs"):
+        tab1, tab2, tab3, tab4 = st.columns(4, gap="small")
+        with tab1:
+            type1 = "primary" if st.session_state.current_teacher_tab == "take_attendance" else 'tertiary'
+            if st.button("Take Attendance", width="stretch", type=type1, icon=":material/fact_check:", key="take_attendance"):
+                st.session_state.current_teacher_tab = "take_attendance"
+                st.rerun()
+        with tab2:
+            type2 = "primary" if st.session_state.current_teacher_tab == "manage_subjects" else 'tertiary'
+            if st.button("Manage Subjects", width="stretch", type=type2, icon=":material/menu_book:", key="manage_subjects"):
+                st.session_state.current_teacher_tab = "manage_subjects"
+                st.rerun()
+        with tab3:
+            type3 = "primary" if st.session_state.current_teacher_tab == "attendance_records" else 'tertiary'
+            if st.button("Attendance Records", width="stretch", type=type3, icon=":material/assignment:", key="attendance_records"):
+                st.session_state.current_teacher_tab = "attendance_records"
+                st.rerun()
+        with tab4:
+            type4 = "primary" if st.session_state.current_teacher_tab == "course_notes" else 'tertiary'
+            if st.button("Course Notes", width="stretch", type=type4, icon=":material/folder_shared:", key="course_notes"):
+                st.session_state.current_teacher_tab = "course_notes"
+                st.rerun()
+    with st.container(key="teacher_dashboard_content"):
+        st.divider()
+        if st.session_state.current_teacher_tab == "take_attendance":
+            teacher_tab_take_attendance()
+        if st.session_state.current_teacher_tab == "manage_subjects":
+            teacher_tab_manage_subjects()
+        if st.session_state.current_teacher_tab == "attendance_records":
+            teacher_tab_attendance_records()
+        if st.session_state.current_teacher_tab == "course_notes":
+            teacher_tab_course_notes()
     footer_dashboard()
 
 
@@ -327,6 +357,11 @@ def _teacher_section_header(title, description, eyebrow):
           <p>{escape(str(description))}</p>
         </section>
     """, unsafe_allow_html=True)
+
+
+@st.dialog("Assessment", width="large")
+def _teacher_note_assessment_dialog(note: dict):
+    render_assessment_tab(note)
 
 
 def teacher_tab_course_notes():
@@ -388,8 +423,8 @@ def teacher_tab_course_notes():
                         st.markdown(sanitize_mermaid_blocks(note["description"]))
                     st.caption(f"Uploaded: {note.get('created_at', '')} | Size: {note.get('file_size_kb', 0)} KB")
                 with c_action:
-                    if st.button("📖 Interactive Reader", key=f"read_teacher_{note['id']}", width="stretch", icon=":material/menu_book:"):
-                        interactive_reader_dialog(note)
+                    if st.button("Assessment", key=f"assessment_teacher_{note['id']}", width="stretch", icon=":material/assignment:"):
+                        _teacher_note_assessment_dialog(note)
                     try:
                         download = get_note_download(note)
                     except (APIError, RuntimeError, StorageApiError) as error:
@@ -951,14 +986,37 @@ def teacher_password_reset():
 def _teacher_auth_styles():
     st.markdown("""
         <style>
+            .st-key-teacher_auth_panel {
+                box-sizing:border-box;
+                width:min(1200px,calc(100% - 2rem));
+                margin:1.25rem auto 1.4rem;
+                padding:1rem clamp(1rem,3vw,2rem) 2rem;
+                border:1px solid #dce1d6;
+                border-radius:30px;
+                background:linear-gradient(125deg,#e6ecdf,#dbe6d5 62%,#e8eadc);
+                box-shadow:0 18px 42px rgba(48,66,51,.08);
+            }
+            .st-key-teacher_auth_header {
+                box-sizing:border-box;
+                width:100%;
+                margin:0 auto .25rem;
+            }
+            .st-key-teacher_auth_header [data-testid="stHorizontalBlock"] { align-items:center; }
+            .st-key-teacher_auth_header img[alt="SmartClass AI"] { width:min(400px,100%) !important; }
+            .st-key-teacher_auth_header [data-testid="stColumn"]:has(button) {
+                display:flex; justify-content:flex-end;
+            }
+            .st-key-teacher_auth_actions {
+                box-sizing:border-box;
+                width:min(1136px,calc(100% - 2rem));
+                margin:1.2rem auto 0;
+            }
+            .st-key-teacher_auth_actions [data-testid="stHorizontalBlock"] { align-items:stretch; gap:.8rem; }
             .teacher-auth-hero {
-                max-width: 760px;
-                margin: 1.25rem auto 1.5rem;
-                padding: 1.4rem 1.6rem;
-                border: 1px solid #dce1d6;
-                border-radius: 22px;
-                background: linear-gradient(125deg, #e6ecdf, #dbe6d5 62%, #e8eadc);
-                box-shadow: 0 12px 30px rgba(48,66,51,.07);
+                box-sizing:border-box;
+                width:100%;
+                margin:0 auto;
+                padding:1rem 0 .5rem;
                 text-align: center;
             }
             .teacher-auth-hero .eyebrow {
@@ -980,8 +1038,17 @@ def _teacher_auth_styles():
                 line-height: 1.55;
             }
             .stApp div[data-testid="stTextInput"] {
-                max-width: 760px;
+                box-sizing:border-box;
+                width:100%;
+                max-width:1136px;
                 margin-inline: auto;
+            }
+            .stApp [data-testid="stWidgetLabel"] p { color:#26382e !important; }
+            .stApp input {
+                min-height:2.85rem;
+                padding-inline:.9rem !important;
+                border-color:#e4e8ee !important;
+                background:#fff !important;
             }
             .stApp div[data-testid="stExpander"] {
                 max-width: 760px;
@@ -991,7 +1058,13 @@ def _teacher_auth_styles():
                 background: rgba(255,254,250,.6);
             }
             @media (max-width: 640px) {
-                .teacher-auth-hero { padding: 1.1rem; }
+                .st-key-teacher_auth_panel { margin:.75rem auto 1rem; padding:.75rem 1rem 1.2rem; border-radius:22px; }
+                .st-key-teacher_auth_header { margin:0 auto; }
+                .st-key-teacher_auth_header img[alt="SmartClass AI"] { width:min(300px,100%) !important; }
+                .st-key-teacher_auth_header [data-testid="stHorizontalBlock"] { gap:.5rem; }
+                .teacher-auth-hero { padding:.8rem 0 .3rem; }
+                .st-key-teacher_auth_actions [data-testid="stHorizontalBlock"] { flex-wrap:wrap; gap:.55rem; }
+                .st-key-teacher_auth_actions [data-testid="stColumn"] { min-width:100% !important; }
             }
         </style>
     """, unsafe_allow_html=True)
@@ -1136,8 +1209,6 @@ def _teacher_forgot_password_dialog():
                             st.rerun()
 
 def teacher_screen_login():
-    style_background_dashboard()
-    style_base_layout()
     if "teacher_registration_message" in st.session_state:
         st.success(st.session_state.pop("teacher_registration_message"))
     if "teacher_registration_warning" in st.session_state:
@@ -1148,27 +1219,29 @@ def teacher_screen_login():
         footer_dashboard()
         return
 
-    c1, c2 = st.columns([3, 1], vertical_alignment="center", gap="large")
-    with c1:
-        st.markdown(f"""
-            <div style="display:flex;align-items:center;justify-content:flex-start;
-                min-height:74px;width:100%;">
-              <img src="{LOGO_DATA_URI}" alt="SmartClass AI"
-                style="display:block;width:min(380px,100%);height:auto;margin:0;" />
-            </div>
-        """, unsafe_allow_html=True)
-    with c2:
-        if st.button("Back to Home", type="secondary", key="loginbackbtn"):
-            st.session_state["login_type"] = None
-            st.session_state["teacher_login_type"] = "login"
-            st.session_state.pop("current_teacher_tab", None)
-            st.rerun()
-
     _teacher_auth_styles()
-    _teacher_auth_hero(
-        "Welcome, teacher",
-        "Sign in to manage attendance, subjects, and classroom learning.",
-    )
+    with st.container(key="teacher_auth_panel"):
+        with st.container(key="teacher_auth_header"):
+            c1, c2 = st.columns([3, 1], vertical_alignment="center", gap="large")
+            with c1:
+                st.markdown(f"""
+                    <div style="display:flex;align-items:center;justify-content:flex-start;
+                        min-height:74px;width:100%;">
+                      <img src="{LOGO_DATA_URI}" alt="SmartClass AI"
+                        style="display:block;width:min(400px,100%);height:auto;margin:0;" />
+                    </div>
+                """, unsafe_allow_html=True)
+            with c2:
+                if st.button("Back to Home", type="secondary", key="loginbackbtn"):
+                    st.session_state["login_type"] = None
+                    st.session_state["teacher_login_type"] = "login"
+                    st.session_state.pop("current_teacher_tab", None)
+                    st.rerun()
+
+        _teacher_auth_hero(
+            "Welcome, teacher",
+            "Sign in to manage attendance, subjects, and classroom learning.",
+        )
     st.space()
     teacher_email = st.text_input(
         "Enter your email address",
@@ -1176,55 +1249,55 @@ def teacher_screen_login():
         key="teacher_login_email",
     )
     teacher_pass = st.text_input("Enter your password", type="password", placeholder="Enter your password", key="teacher_login_password")
-    action_spacer_left, btnc1, btnc2, btnc3, action_spacer_right = st.columns(
-        [.45, 2, 2, 2, .45], gap="small"
-    )
-
-    with btnc1:
-        if st.button("Login", icon=":material/passkey:", width="stretch"):
-            teacher = teacher_login(teacher_email, teacher_pass)
-            if teacher:
-                st.session_state.teacher_data = teacher
+    with st.container(key="teacher_auth_actions"):
+        btnc1, btnc2, btnc3 = st.columns(3, gap="medium")
+        with btnc1:
+            if st.button("Login", type="secondary", icon=":material/passkey:", width="stretch"):
+                teacher = teacher_login(teacher_email, teacher_pass)
+                if teacher:
+                    st.session_state.teacher_data = teacher
+                    st.rerun()
+                st.error("Invalid email or password.")
+        with btnc2:
+            if st.button("Register instead", type="primary", icon=":material/person_add:", width="stretch"):
+                st.session_state.teacher_login_type = "register"
                 st.rerun()
-            st.error("Invalid email or password.")
-    with btnc2:
-        if st.button("Register instead", type="primary", icon=":material/person_add:", width="stretch"):
-            st.session_state.teacher_login_type = "register"
-            st.rerun()
-    with btnc3:
-        if st.button(
-            "Forgot password?",
-            key="open_teacher_password_reset",
-            icon=":material/lock_reset:",
-            type="secondary",
-            width="stretch",
-        ):
-            _teacher_forgot_password_dialog()
+        with btnc3:
+            if st.button(
+                "Forgot password?",
+                key="open_teacher_password_reset",
+                icon=":material/lock_reset:",
+                type="secondary",
+                width="stretch",
+            ):
+                _teacher_forgot_password_dialog()
 
     footer_dashboard()
 
 def teacher_screen_register():
     _teacher_auth_styles()
-    c1, c2 = st.columns([3, 1], vertical_alignment="center", gap="large")
-    with c1:
-        st.markdown(f"""
-            <div style="display:flex;align-items:center;justify-content:flex-start;
-                min-height:74px;width:100%;">
-              <img src="{LOGO_DATA_URI}" alt="SmartClass AI"
-                style="display:block;width:min(380px,100%);height:auto;margin:0;" />
-            </div>
-        """, unsafe_allow_html=True)
-    with c2:
-        if st.button("Back to Home", type="secondary", key="register_back_home"):
-            st.session_state["login_type"] = None
-            st.session_state["teacher_login_type"] = "login"
-            st.session_state.pop("current_teacher_tab", None)
-            st.rerun()
-            
-    _teacher_auth_hero(
-        "Create your teacher account",
-        "Set up your workspace to take attendance and manage your classes.",
-    )
+    with st.container(key="teacher_auth_panel"):
+        with st.container(key="teacher_auth_header"):
+            c1, c2 = st.columns([3, 1], vertical_alignment="center", gap="large")
+            with c1:
+                st.markdown(f"""
+                    <div style="display:flex;align-items:center;justify-content:flex-start;
+                        min-height:74px;width:100%;">
+                      <img src="{LOGO_DATA_URI}" alt="SmartClass AI"
+                        style="display:block;width:min(400px,100%);height:auto;margin:0;" />
+                    </div>
+                """, unsafe_allow_html=True)
+            with c2:
+                if st.button("Back to Home", type="secondary", key="register_back_home"):
+                    st.session_state["login_type"] = None
+                    st.session_state["teacher_login_type"] = "login"
+                    st.session_state.pop("current_teacher_tab", None)
+                    st.rerun()
+
+        _teacher_auth_hero(
+            "Create your teacher account",
+            "Set up your workspace to take attendance and manage your classes.",
+        )
 
     teacher_username = st.text_input("Enter a username", placeholder="@abhishekh", key="teacher_register_username")
 
@@ -1240,28 +1313,28 @@ def teacher_screen_register():
 
     teacher_pass_confirm = st.text_input("Confirm your password", type="password", placeholder="Confirm your password", key="teacher_register_password_confirm")
 
-    st.divider()
-    action_spacer_left, btnc1, btnc2, action_spacer_right = st.columns([1, 2, 2, 1])
-    with btnc1:
-        if st.button("Register now", icon=":material/passkey:", width="stretch"):
-            success, message = register_teacher(
-                teacher_username,
-                teacher_name,
-                teacher_email,
-                teacher_pass,
-                teacher_pass_confirm,
-            )
-            if success:
-                st.session_state.teacher_registration_message = message
+    with st.container(key="teacher_auth_actions"):
+        btnc1, btnc2 = st.columns(2, gap="medium")
+        with btnc1:
+            if st.button("Register now", type="primary", icon=":material/passkey:", width="stretch"):
+                success, message = register_teacher(
+                    teacher_username,
+                    teacher_name,
+                    teacher_email,
+                    teacher_pass,
+                    teacher_pass_confirm,
+                )
+                if success:
+                    st.session_state.teacher_registration_message = message
+                    st.session_state.teacher_login_type = "login"
+                    st.rerun()
+                else:
+                    st.error(message)
+
+        with btnc2:
+            if st.button("Log in instead", type="secondary", icon=":material/passkey:", width="stretch"):
                 st.session_state.teacher_login_type = "login"
                 st.rerun()
-            else:
-                st.error(message)
-
-    with btnc2:
-        if st.button("Log in instead", type="primary", icon=":material/passkey:", width="stretch"):
-            st.session_state.teacher_login_type = "login"
-            st.rerun()
 
     footer_dashboard()
 

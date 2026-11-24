@@ -1,31 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 144" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 160" role="img" aria-labelledby="title desc">
   <title id="title">SmartClass AI</title>
-  <desc id="desc">Animated SmartClass AI logo with a graduation cap, open book, and learning spark.</desc>
+  <desc id="desc">SmartClass AI logo with an open book and a learning checkmark.</desc>
   <defs>
-    <linearGradient id="badge" x1="12" y1="12" x2="132" y2="132" gradientUnits="userSpaceOnUse">
+    <linearGradient id="mark" x1="12" y1="12" x2="146" y2="146" gradientUnits="userSpaceOnUse">
       <stop stop-color="#829A79"/>
-      <stop offset="1" stop-color="#385844"/>
+      <stop offset="1" stop-color="#315B54"/>
     </linearGradient>
-    <style>
-      .cap { transform-box: fill-box; transform-origin: center; animation: cap-float 3.2s ease-in-out infinite; }
-      .spark { transform-box: fill-box; transform-origin: center; animation: spark-pulse 2.4s ease-in-out infinite; }
-      .ring { transform-box: fill-box; transform-origin: center; animation: ring-pulse 2.4s ease-out infinite; }
-      @keyframes cap-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-      @keyframes spark-pulse { 0%, 100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.18); opacity: 1; } }
-      @keyframes ring-pulse { 0% { transform: scale(.8); opacity: .65; } 100% { transform: scale(1.8); opacity: 0; } }
-      @media (prefers-reduced-motion: reduce) { .cap, .spark, .ring { animation: none; } }
-    </style>
+    <linearGradient id="page" x1="38" y1="55" x2="122" y2="115" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFEFA"/>
+      <stop offset="1" stop-color="#EAF2E7"/>
+    </linearGradient>
   </defs>
-  <rect x="8" y="8" width="128" height="128" rx="34" fill="url(#badge)"/>
-  <circle class="ring" cx="117" cy="30" r="12" fill="none" stroke="#B97453" stroke-width="2"/>
-  <g class="cap">
-    <path d="M29 54 72 35l43 19-43 19-43-19Z" fill="#FFFEFA"/>
-    <path d="M43 68v23c16 12 42 12 58 0V68L72 81 43 68Z" fill="#FFFEFA"/>
-    <path d="M115 55v25" stroke="#FFFEFA" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="115" cy="84" r="5" fill="#B97453"/>
-  </g>
-  <path class="spark" d="m113 20 5 11 12 2-9 8 2 12-10-7-10 7 2-12-9-8 12-2 5-11Z" fill="#B97453"/>
-  <text x="164" y="80" fill="#26382E" font-family="Lora, Georgia, serif" font-size="54" font-weight="700" letter-spacing="-2">SmartClass</text>
-  <text x="480" y="80" fill="#B97453" font-family="DM Sans, Arial, sans-serif" font-size="52" font-weight="700" letter-spacing="-1">AI</text>
-  <text x="168" y="113" fill="#65746A" font-family="DM Sans, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="5">SMART LEARNING · CONNECTED CLASSROOMS</text>
+  <rect x="10" y="10" width="140" height="140" rx="38" fill="url(#mark)"/>
+  <path d="M80 63C66 53 51 52 36 57v52c16-4 31-2 44 9 13-11 28-13 44-9V57c-15-5-30-4-44 6Z" fill="url(#page)"/>
+  <path d="M80 64v53M46 69c10-2 20 0 28 5m-28 7c10-2 20 0 28 5m36-17c-10-2-20 0-28 5m28 7c-10-2-20 0-28 5" fill="none" stroke="#829A79" stroke-width="3.4" stroke-linecap="round"/>
+  <circle cx="121" cy="43" r="19" fill="#B97453" stroke="#FFFEFA" stroke-width="4"/>
+  <path d="m113 43 5 5 10-11" fill="none" stroke="#FFFEFA" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="176" y="84" fill="#26382E" font-family="Lora, Georgia, serif" font-size="58" font-weight="700" letter-spacing="-2.2">SmartClass</text>
+  <text x="492" y="84" fill="#B97453" font-family="DM Sans, Arial, sans-serif" font-size="56" font-weight="750" letter-spacing="-1.5">AI</text>
+  <text x="180" y="121" fill="#65746A" font-family="DM Sans, Arial, sans-serif" font-size="13" font-weight="750" letter-spacing="3.3">SMART LEARNING · CONNECTED CLASSROOMS</text>
 </svg>

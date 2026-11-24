@@ -1,0 +1,3 @@
+# Install after cloning the official Janus repository into ./Janus.
+-e ./Janus
+transformers>=4.38.2,<5

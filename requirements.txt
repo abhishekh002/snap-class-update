@@ -7,7 +7,7 @@ pandas
 scikit-learn
 dlib-bin
 git+https://github.com/ageitgey/face_recognition_models
-setuptools<70.0.0
+setuptools>=77,<81
 
 supabase
 postgrest
@@ -23,6 +23,7 @@ resemblyzer
 # Google ADK Agent
 google-adk
 google-genai
+requests
 python-dotenv
 pypdf
 python-docx
