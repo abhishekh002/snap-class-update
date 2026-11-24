@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
   <title id="title">SmartClass AI architecture</title>
-  <desc id="desc">Architecture overview showing student and teacher portals, the Streamlit application, Supabase storage, face attendance processing, and the AI tutor using Gemini, optional local Ollama and Janus, and optional Zep knowledge retrieval.</desc>
+  <desc id="desc">Architecture overview showing student and teacher portals, the Streamlit application, Supabase storage, face attendance processing, and the Gemini AI tutor with optional Zep knowledge retrieval.</desc>
   <defs>
     <linearGradient id="page" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6f5ef"/><stop offset="1" stop-color="#e9efe5"/></linearGradient>
     <linearGradient id="sage" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e9f0e4"/><stop offset="1" stop-color="#dce8d8"/></linearGradient>
@@ -116,7 +116,7 @@
     <text x="588" y="608" class="tiny">PDF · DOCX · PPTX · TXT · Markdown · CSV</text>
     <rect x="568" y="632" width="422" height="54" rx="13" fill="url(#peach)" stroke="#ecd7c9"/>
     <text x="588" y="656" class="small" font-weight="700">Image questions + board digitizing</text>
-    <text x="588" y="674" class="tiny">Janus handles image Q&amp;A locally; Gemini digitizes board images.</text>
+    <text x="588" y="674" class="tiny">Gemini reads images, worksheets, and board photos.</text>
     <text x="568" y="722" class="copy">Answers can use optional Zep knowledge-graph context.</text>
     <text x="568" y="750" class="small">Teachers publish assessments; students submit and review results.</text>
   </g>
@@ -124,21 +124,15 @@
   <g filter="url(#shadow)">
     <rect x="1070" y="470" width="480" height="328" rx="22" fill="#eaf1f3" stroke="#c8d9df" stroke-width="1.5"/>
     <rect x="1070" y="470" width="480" height="7" rx="4" fill="#315b54"/>
-    <text x="1098" y="510" class="kicker">MODEL &amp; CONTEXT SERVICES</text>
-    <text x="1098" y="542" class="node-title">AI Providers</text>
-    <rect x="1098" y="566" width="205" height="76" rx="14" fill="#fffefa" stroke="#dce1d6"/>
-    <rect x="1318" y="566" width="204" height="76" rx="14" fill="#fffefa" stroke="#dce1d6"/>
-    <text x="1200" y="591" text-anchor="middle" class="small" font-weight="700">Google Gemini</text>
-    <text x="1200" y="614" text-anchor="middle" class="tiny">Chat · documents · board notes</text>
-    <text x="1420" y="591" text-anchor="middle" class="small" font-weight="700">Janus-Pro</text>
-    <text x="1420" y="614" text-anchor="middle" class="tiny">Local image understanding</text>
-    <rect x="1098" y="656" width="205" height="76" rx="14" fill="#fffefa" stroke="#dce1d6"/>
-    <rect x="1318" y="656" width="204" height="76" rx="14" fill="#fffefa" stroke="#dce1d6"/>
-    <text x="1200" y="681" text-anchor="middle" class="small" font-weight="700">Ollama · optional</text>
-    <text x="1200" y="704" text-anchor="middle" class="tiny">Local DeepSeek-R1 chat</text>
-    <text x="1420" y="681" text-anchor="middle" class="small" font-weight="700">Zep · optional</text>
-    <text x="1420" y="704" text-anchor="middle" class="tiny">Knowledge-graph retrieval</text>
-    <text x="1098" y="769" class="tiny">Gemini uses the configured Google API; Ollama and Janus run locally.</text>
+    <text x="1098" y="510" class="kicker">AI &amp; CONTEXT SERVICES</text>
+    <text x="1098" y="542" class="node-title">Gemini Study Tutor</text>
+    <rect x="1098" y="566" width="424" height="76" rx="14" fill="#fffefa" stroke="#dce1d6"/>
+    <text x="1310" y="591" text-anchor="middle" class="small" font-weight="700">Google Gemini</text>
+    <text x="1310" y="614" text-anchor="middle" class="tiny">Text · documents · images · board notes</text>
+    <rect x="1098" y="656" width="424" height="76" rx="14" fill="#fffefa" stroke="#dce1d6"/>
+    <text x="1310" y="681" text-anchor="middle" class="small" font-weight="700">Zep · optional</text>
+    <text x="1310" y="704" text-anchor="middle" class="tiny">Knowledge-graph retrieval context</text>
+    <text x="1098" y="769" class="tiny">Gemini uses the configured Google API key.</text>
   </g>
 
   <g>

@@ -59,6 +59,49 @@ def _get_fallback_runner():
     return _fallback_runner
 
 
+def _ask_gemini_with_image(
+    prompt: str,
+    image_bytes: bytes,
+    image_mime_type: str,
+) -> str:
+    """Send an uploaded image and tutor prompt directly to Gemini."""
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=_get_api_key())
+    contents = types.Content(
+        role="user",
+        parts=[
+            types.Part.from_text(text=prompt),
+            types.Part.from_bytes(data=image_bytes, mime_type=image_mime_type),
+        ],
+    )
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=SMARTCLASS_SYSTEM_PROMPT,
+            ),
+        )
+    except APIError as error:
+        status_code = getattr(error, "code", None)
+        if status_code not in {500, 502, 503, 504}:
+            raise
+        logger.warning(
+            "Gemini primary model returned HTTP %s for image input; retrying with fallback model.",
+            status_code,
+        )
+        response = client.models.generate_content(
+            model="gemini-3.5-flash-lite",
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=SMARTCLASS_SYSTEM_PROMPT,
+            ),
+        )
+    return response.text or "I could not read useful details from that image. Try asking about a specific part."
+
+
 def _compress_tutor_messages(messages: list[dict]) -> list[dict]:
     """Compress older assistant and retrieved-context messages locally."""
     try:
@@ -152,10 +195,19 @@ def _build_tutor_prompt(
 
 
 async def _ask_agent(
-    message: str, conversation_history: list[dict] | None = None
+    message: str,
+    conversation_history: list[dict] | None = None,
+    image_bytes: bytes | None = None,
+    image_mime_type: str | None = None,
 ) -> str:
     graph_context = search_study_context(message)
     prompt = _build_tutor_prompt(message, conversation_history, graph_context)
+    if image_bytes is not None:
+        return _ask_gemini_with_image(
+            prompt,
+            image_bytes,
+            image_mime_type or "image/jpeg",
+        )
     try:
         events = await _get_runner().run_debug(prompt)
     except APIError as error:
@@ -175,6 +227,13 @@ async def _ask_agent(
     return "I am here to help you with SmartClass AI and your course study materials!"
 
 
-def ask_snapclass_ai(message: str, conversation_history: list[dict] | None = None) -> str:
+def ask_snapclass_ai(
+    message: str,
+    conversation_history: list[dict] | None = None,
+    image_bytes: bytes | None = None,
+    image_mime_type: str | None = None,
+) -> str:
     """Synchronous caller for Streamlit UI."""
-    return asyncio.run(_ask_agent(message, conversation_history))
+    return asyncio.run(
+        _ask_agent(message, conversation_history, image_bytes, image_mime_type)
+    )
