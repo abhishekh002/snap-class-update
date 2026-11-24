@@ -43,6 +43,7 @@ def _create_runner(model: str = "gemini-flash-lite-latest"):
 
 _runner = None
 _fallback_runner = None
+_last_resort_runner = None
 
 
 def _get_runner(model: str = "gemini-flash-lite-latest"):
@@ -57,6 +58,13 @@ def _get_fallback_runner():
     if _fallback_runner is None:
         _fallback_runner = _create_runner("gemini-3.5-flash-lite")
     return _fallback_runner
+
+
+def _get_last_resort_runner():
+    global _last_resort_runner
+    if _last_resort_runner is None:
+        _last_resort_runner = _create_runner("gemini-3.6-flash")
+    return _last_resort_runner
 
 
 def _ask_gemini_with_image(
@@ -76,29 +84,27 @@ def _ask_gemini_with_image(
             types.Part.from_bytes(data=image_bytes, mime_type=image_mime_type),
         ],
     )
-    try:
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=SMARTCLASS_SYSTEM_PROMPT,
-            ),
-        )
-    except APIError as error:
-        status_code = getattr(error, "code", None)
-        if status_code not in {500, 502, 503, 504}:
-            raise
-        logger.warning(
-            "Gemini primary model returned HTTP %s for image input; retrying with fallback model.",
-            status_code,
-        )
-        response = client.models.generate_content(
-            model="gemini-3.5-flash-lite",
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=SMARTCLASS_SYSTEM_PROMPT,
-            ),
-        )
+    response = None
+    models = (GEMINI_MODEL, "gemini-3.5-flash-lite", "gemini-3.6-flash")
+    for index, model in enumerate(models):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=SMARTCLASS_SYSTEM_PROMPT,
+                ),
+            )
+            break
+        except APIError as error:
+            status_code = getattr(error, "code", None)
+            if index == len(models) - 1 or status_code not in {500, 502, 503, 504}:
+                raise
+            logger.warning(
+                "Gemini model %s returned HTTP %s for image input; trying the next Gemini model.",
+                model,
+                status_code,
+            )
     return response.text or "I could not read useful details from that image. Try asking about a specific part."
 
 
@@ -208,17 +214,21 @@ async def _ask_agent(
             image_bytes,
             image_mime_type or "image/jpeg",
         )
-    try:
-        events = await _get_runner().run_debug(prompt)
-    except APIError as error:
-        status_code = getattr(error, "code", None)
-        if status_code not in {500, 502, 503, 504}:
-            raise
-        logger.warning(
-            "Gemini primary model returned HTTP %s; retrying with fallback model.",
-            status_code,
-        )
-        events = await _get_fallback_runner().run_debug(prompt)
+    runners = (_get_runner, _get_fallback_runner, _get_last_resort_runner)
+    events = None
+    for index, get_runner in enumerate(runners):
+        try:
+            events = await get_runner().run_debug(prompt)
+            break
+        except APIError as error:
+            status_code = getattr(error, "code", None)
+            if index == len(runners) - 1 or status_code not in {500, 502, 503, 504}:
+                raise
+            logger.warning(
+                "Gemini model attempt %s returned HTTP %s; retrying with another Gemini model.",
+                index + 1,
+                status_code,
+            )
     for event in events:
         if event.content and event.content.parts:
             text = "".join(p.text for p in event.content.parts if p.text)

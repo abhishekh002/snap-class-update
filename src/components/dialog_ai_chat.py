@@ -31,13 +31,17 @@ def _request_ai_response(
         status_code = getattr(error, "code", None)
         logger.warning("Gemini tutor request failed with HTTP status %s", status_code)
         if status_code == 429:
-            return "The AI tutor has reached its Gemini usage limit. Please try again later."
+            st.warning("Gemini reached a request or usage limit. Please wait and try again later.")
+            return None
         if status_code in {500, 502, 503, 504}:
-            return "Gemini is temporarily unavailable. Please try again in a moment."
-        return "Gemini could not complete that response. Check the Google API key and model access."
+            st.warning("Gemini is temporarily busy across its available models. Your question is still here; please try again shortly.")
+            return None
+        st.warning(f"Gemini could not answer this request (HTTP {status_code}). Check the API key and model access.")
+        return None
     except Exception as error:
         logger.warning("Unexpected tutor failure (%s)", type(error).__name__)
-        return "I could not complete that response. Please try again."
+        st.warning("I could not get a response from Gemini just now. Please try again.")
+        return None
 
 
 def open_ai_learning_dialog(audience: str = None):
