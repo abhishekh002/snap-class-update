@@ -13,9 +13,9 @@ from src.components.markdown_utils import sanitize_mermaid_blocks
 from src.components.tts_player import render_tts_player
 
 
-def _request_ai_response(message: str):
+def _request_ai_response(message: str, conversation_history: list[dict] | None = None):
     try:
-        return ask_snapclass_ai(message)
+        return ask_snapclass_ai(message, conversation_history)
     except RuntimeError as error:
         st.error(str(error))
         return None
@@ -304,7 +304,8 @@ def ai_chat_screen(initial_prompt: str = None, audience: str = None, display_nam
                     return answer
             with st.spinner("SnapClass AI is thinking..."):
                 message = explicit_message or st.session_state.snapclass_ai_messages[-1]["content"]
-                return _request_ai_response(message)
+                conversation_history = st.session_state.snapclass_ai_messages[:-1]
+                return _request_ai_response(message, conversation_history)
 
         with workspace:
             with st.container(key="smartclass_ai_workspace"):

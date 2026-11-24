@@ -23,6 +23,7 @@ resemblyzer
 # Google ADK Agent
 google-adk
 google-genai
+headroom-ai>=0.45,<0.46
 requests
 python-dotenv
 pypdf
