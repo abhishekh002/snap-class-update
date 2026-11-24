@@ -30,10 +30,12 @@ def _load_janus(model_name: str):
         from janus.models import MultiModalityCausalLM, VLChatProcessor
     except ImportError as error:
         missing_module = getattr(error, "name", None) or "a required dependency"
+        project_root = Path(__file__).resolve().parents[2]
         raise RuntimeError(
-            f"Janus could not import {missing_module} in this Streamlit environment. "
-            "Install its dependencies in the same Python environment with "
-            "`python -m pip install -r requirements-janus.txt`, then restart SnapClass."
+            f"Janus could not import {missing_module}. Streamlit is running with "
+            f"Python: {sys.executable}. Import details: {error}. Install using "
+            f'"{sys.executable}" -m pip install -r "{project_root / "requirements-janus.txt"}" '
+            "and relaunch SnapClass with this same Python interpreter."
         ) from error
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
