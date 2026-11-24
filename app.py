@@ -1,8 +1,15 @@
 
 from pathlib import Path
+import sys
 
 from dotenv import load_dotenv
 import streamlit as st
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+project_root_text = str(PROJECT_ROOT)
+if project_root_text in sys.path:
+    sys.path.remove(project_root_text)
+sys.path.insert(0, project_root_text)
 
 from src.screens.home_screen import home_screen
 from src.screens.teacher_screen import teacher_screen
